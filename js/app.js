@@ -186,23 +186,62 @@ class App {
   }
 
   initToolbar() {
-    // Export Wokwi
+    // Export Wokwi Modal
     const btnExportWokwi = document.getElementById('btn-export-wokwi');
+    const modalWokwi = document.getElementById('modal-export-wokwi');
+    const wokwiTextarea = document.getElementById('wokwi-json-textarea');
+    const wokwiStats = document.getElementById('wokwi-stats-badge');
+    const btnCopyWokwi = document.getElementById('btn-copy-wokwi-json');
+    const btnDownloadWokwi = document.getElementById('btn-download-wokwi-json');
+    const copyWokwiText = document.getElementById('copy-wokwi-text');
+
     if (btnExportWokwi) {
       btnExportWokwi.addEventListener('click', () => {
         const data = Translator.toWokwi(this.project);
-        this.downloadFile('diagram.json', JSON.stringify(data, null, 2), 'application/json');
+        const jsonStr = JSON.stringify(data, null, 2);
+        if (wokwiTextarea) wokwiTextarea.value = jsonStr;
+        if (wokwiStats) {
+          wokwiStats.textContent = `${data.parts?.length || 0} parts, ${data.connections?.length || 0} connections`;
+        }
+        UI.openModal('modal-export-wokwi');
+      });
+    }
+
+    if (btnCopyWokwi && wokwiTextarea) {
+      btnCopyWokwi.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(wokwiTextarea.value);
+          if (copyWokwiText) copyWokwiText.textContent = 'Copied!';
+          UI.showToast('Copied diagram.json to clipboard!', 'success');
+          setTimeout(() => {
+            if (copyWokwiText) copyWokwiText.textContent = 'Copy JSON';
+          }, 2000);
+        } catch (err) {
+          wokwiTextarea.select();
+          document.execCommand('copy');
+          UI.showToast('Copied diagram.json to clipboard!', 'success');
+        }
+      });
+    }
+
+    if (btnDownloadWokwi && wokwiTextarea) {
+      btnDownloadWokwi.addEventListener('click', () => {
+        const content = wokwiTextarea.value || JSON.stringify(Translator.toWokwi(this.project), null, 2);
+        this.downloadFile('diagram.json', content, 'application/json');
         UI.showToast('Exported Wokwi diagram.json', 'success');
       });
     }
 
-    // Export Standalone HTML
+    // Export Standalone HTML with embedded SVG graphics
     const btnExportHtml = document.getElementById('btn-export-html');
     if (btnExportHtml) {
       btnExportHtml.addEventListener('click', () => {
-        const html = Translator.exportStandaloneHTML(this.project);
+        const svgEl = document.getElementById('circuit-svg');
+        const viewportGroup = svgEl ? svgEl.querySelector('#viewport-group') : null;
+        const renderedSvg = viewportGroup ? viewportGroup.innerHTML : '';
+        const html = Translator.exportStandaloneHTML(this.project, renderedSvg);
         this.downloadFile('circuit.html', html, 'text/html');
-        UI.showToast('Exported Standalone circuit.html', 'success');
+        UI.showToast('Exported Standalone circuit.html with full graphics!', 'success');
       });
     }
 

@@ -5,7 +5,83 @@ export const UI = {
     this.initModals();
     this.initDrawers();
     this.initTinkercadModal();
+    this.initMobileFabMenu();
     this.initComponentPalette(onAddComponent);
+  },
+
+  openModal(modalIdOrEl) {
+    const modal = typeof modalIdOrEl === 'string' ? document.getElementById(modalIdOrEl) : modalIdOrEl;
+    if (modal) {
+      modal.classList.add('open');
+      const firstInput = modal.querySelector('input, textarea, button:not([data-close-modal])');
+      if (firstInput && !firstInput.hasAttribute('readonly')) {
+        setTimeout(() => firstInput.focus(), 50);
+      }
+    }
+  },
+
+  closeModal(modalIdOrEl) {
+    const modal = typeof modalIdOrEl === 'string' ? document.getElementById(modalIdOrEl) : modalIdOrEl;
+    if (modal) {
+      modal.classList.remove('open');
+    }
+  },
+
+  initMobileFabMenu() {
+    const fabContainer = document.getElementById('mobile-fab-container');
+    const fabTrigger = document.getElementById('btn-mobile-fab-trigger');
+    const fabBackdrop = document.getElementById('mobile-fab-backdrop');
+    const btnCloseFab = document.getElementById('btn-close-fab');
+
+    if (!fabContainer) return;
+
+    const toggleMenu = (open) => {
+      const isOpen = open !== undefined ? open : !fabContainer.classList.contains('open');
+      if (isOpen) {
+        fabContainer.classList.add('open');
+      } else {
+        fabContainer.classList.remove('open');
+      }
+    };
+
+    if (fabTrigger) {
+      fabTrigger.addEventListener('click', () => toggleMenu());
+    }
+
+    if (fabBackdrop) {
+      fabBackdrop.addEventListener('click', () => toggleMenu(false));
+    }
+
+    if (btnCloseFab) {
+      btnCloseFab.addEventListener('click', () => toggleMenu(false));
+    }
+
+    // Escape key closes fab
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && fabContainer.classList.contains('open')) {
+        toggleMenu(false);
+      }
+    });
+
+    // Action button clicks inside mobile FAB
+    fabContainer.querySelectorAll('[data-action]').forEach((item) => {
+      item.addEventListener('click', () => {
+        const action = item.getAttribute('data-action');
+        toggleMenu(false);
+
+        if (action === 'import-tcad') {
+          document.getElementById('btn-import-tcad')?.click();
+        } else if (action === 'export-wokwi') {
+          document.getElementById('btn-export-wokwi')?.click();
+        } else if (action === 'export-html') {
+          document.getElementById('btn-export-html')?.click();
+        } else if (action === 'export-json') {
+          document.getElementById('btn-export-json')?.click();
+        } else if (action === 'changelog') {
+          document.getElementById('btn-changelog')?.click();
+        }
+      });
+    });
   },
 
   initDrawers() {

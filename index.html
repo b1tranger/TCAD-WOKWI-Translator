@@ -8,7 +8,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M25 50h50M50 25v50' stroke='%2338bdf8' stroke-width='10' stroke-linecap='round'/><circle cx='50' cy='50' r='12' fill='%230284c7'/></svg>">
   <title>TCAD-WOKWI-Translator | Visual Circuit Editor & Translator</title>
-  <link rel="stylesheet" href="./css/style.css?v=0.1.8">
+  <link rel="stylesheet" href="./css/style.css?v=0.1.11">
 
 
 
@@ -35,7 +35,7 @@
         </div>
         <h1 class="brand-title">
           <span class="brand-full-name">TCAD-WOKWI</span>
-          <span class="brand-badge">v0.1.8</span>
+          <span class="brand-badge">v0.1.11</span>
         </h1>
       </div>
     </div>
@@ -95,6 +95,13 @@
           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
         </svg>
         <span class="btn-text">Docs</span>
+      </a>
+
+      <a href="https://github.com/b1tranger/TCAD-WOKWI-Translator" target="_blank" rel="noopener noreferrer" class="btn" title="View Source on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span class="btn-text">GitHub</span>
       </a>
 
       <!-- Mobile Inspector Toggle -->
@@ -274,6 +281,82 @@
     </div>
   </div>
 
+  <!-- Wokwi Export Modal -->
+  <div id="modal-export-wokwi" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-export-wokwi-title">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          <h2 id="modal-export-wokwi-title" class="modal-title">Export to Wokwi Simulator</h2>
+        </div>
+        <button class="btn btn-icon-only" data-close-modal title="Close dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="wokwi-guide-card">
+          <div class="wokwi-guide-step">
+            <span class="step-num">1</span>
+            <span>Copy or download the compiled <code>diagram.json</code> below.</span>
+          </div>
+          <div class="wokwi-guide-step">
+            <span class="step-num">2</span>
+            <span>Open <a href="https://wokwi.com" target="_blank" rel="noopener noreferrer" class="link-sky">Wokwi Simulator</a> in your browser.</span>
+          </div>
+          <div class="wokwi-guide-step">
+            <span class="step-num">3</span>
+            <span>Switch to the <code>diagram.json</code> tab in Wokwi, paste this JSON, and start simulation!</span>
+          </div>
+        </div>
+
+        <div class="wokwi-actions-row">
+          <a href="https://wokwi.com/projects/new/arduino-uno" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-open-wokwi-site">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            Open Wokwi Simulator (New Arduino Project)
+          </a>
+          <a href="https://wokwi.com" target="_blank" rel="noopener noreferrer" class="btn" id="btn-open-wokwi-home">
+            Wokwi Homepage
+          </a>
+        </div>
+
+        <div class="code-preview-header">
+          <label for="wokwi-json-textarea"><strong>Compiled diagram.json</strong></label>
+          <span id="wokwi-stats-badge" class="badge-subtle">0 parts, 0 connections</span>
+        </div>
+        <textarea id="wokwi-json-textarea" class="code-editor-textarea" readonly spellcheck="false"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-copy-wokwi-json" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <span id="copy-wokwi-text">Copy JSON</span>
+        </button>
+        <button id="btn-download-wokwi-json" class="btn btn-accent">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download diagram.json
+        </button>
+        <button class="btn" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Changelog Modal (powered by doc/versions.md) -->
   <div id="modal-changelog" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-changelog-title">
     <div class="modal-container">
@@ -295,10 +378,121 @@
     </div>
   </div>
 
+  <!-- Mobile Floating Action Menu (Expands on Mobile Viewports) -->
+  <div id="mobile-fab-container" class="mobile-fab-container">
+    <div id="mobile-fab-backdrop" class="mobile-fab-backdrop"></div>
+    <div id="mobile-fab-menu" class="mobile-fab-menu" role="menu" aria-label="Mobile Actions Menu">
+      <div class="mobile-fab-header">
+        <div class="mobile-fab-title-wrap">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span class="mobile-fab-title">Quick Actions</span>
+        </div>
+        <button id="btn-close-fab" class="btn btn-icon-only mobile-fab-close" title="Close Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="mobile-fab-grid">
+        <button class="mobile-fab-item item-primary" data-action="import-tcad">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Import TCAD</span>
+        </button>
+
+        <button class="mobile-fab-item item-accent" data-action="export-wokwi">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Export Wokwi</span>
+        </button>
+
+        <button class="mobile-fab-item item-accent" data-action="export-html">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Export HTML</span>
+        </button>
+
+        <button class="mobile-fab-item" data-action="export-json">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Raw JSON</span>
+        </button>
+
+        <button class="mobile-fab-item" data-action="changelog">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Changelog</span>
+        </button>
+
+        <a href="./doc/DOCUMENTATION.md" target="_blank" class="mobile-fab-item">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">Docs</span>
+        </a>
+
+        <a href="https://github.com/b1tranger/TCAD-WOKWI-Translator" target="_blank" rel="noopener noreferrer" class="mobile-fab-item">
+          <div class="fab-item-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+          </div>
+          <span class="fab-item-label">GitHub</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Floating Action Button Trigger -->
+    <button id="btn-mobile-fab-trigger" class="mobile-fab-trigger" aria-label="Open Actions Menu" title="Actions Menu">
+      <div class="fab-trigger-icons">
+        <svg class="fab-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="2.5"/>
+          <circle cx="19" cy="12" r="2.5"/>
+          <circle cx="5" cy="12" r="2.5"/>
+        </svg>
+        <svg class="fab-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <span class="fab-pulse-ring"></span>
+    </button>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script type="module" src="./js/app.js?v=0.1.8"></script>
+  <script type="module" src="./js/app.js?v=0.1.11"></script>
 </body>
 </html>
 

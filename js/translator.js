@@ -7,7 +7,7 @@ import { COMPONENT_CATALOG } from './schema.js';
 
 export const Translator = {
   /**
-   * Convert Native Project Schema to Wokwi diagram.json
+    * Convert Native Project Schema to Wokwi diagram.json
    */
   toWokwi(project) {
     const parts = (project.components || []).map((comp) => {
@@ -37,6 +37,49 @@ export const Translator = {
       return [fromPin, toPin, color, instructions];
     });
 
+    // Synthesize Logical Breadboard Connections:
+    // If any component pin sits on a breadboard column or power rail, logically connect it
+    const breadboards = (project.components || []).filter((c) =>
+      c.type === 'breadboard-half' || c.type === 'breadboard-full' || c.type === 'breadboard-mini'
+    );
+
+    if (breadboards.length > 0) {
+      const existingConnKeys = new Set(
+        connections.map((c) => `${c[0]}<->${c[1]}`)
+      );
+
+      (project.components || []).forEach((comp) => {
+        if (comp.type.startsWith('breadboard')) return;
+
+        breadboards.forEach((bb) => {
+          // Check collision with breadboard
+          const bbWidth = bb.type === 'breadboard-full' ? 680 : bb.type === 'breadboard-mini' ? 240 : 560;
+          const bbHeight = 252;
+          if (
+            comp.x >= bb.x - 40 &&
+            comp.x <= bb.x + bbWidth &&
+            comp.y >= bb.y - 20 &&
+            comp.y <= bb.y + bbHeight
+          ) {
+            // Find component pins and match to breadboard holes
+            const pins = this.getComponentPins(comp);
+            pins.forEach((pin) => {
+              const hole = this.resolveHoleOnBreadboard(pin.x, pin.y, bb);
+              if (hole) {
+                const compPinStr = `${comp.id}:${pin.name}`;
+                const bbPinStr = `${bb.id}:${hole}`;
+                const key1 = `${compPinStr}<->${bbPinStr}`;
+                const key2 = `${bbPinStr}<->${compPinStr}`;
+                if (!existingConnKeys.has(key1) && !existingConnKeys.has(key2)) {
+                  existingConnKeys.add(key1);
+                  connections.push([compPinStr, bbPinStr, 'green', []]);
+                }
+              }
+            });
+          }
+        });
+      });
+    }
 
     return {
       version: 1,
@@ -45,6 +88,85 @@ export const Translator = {
       parts,
       connections
     };
+  },
+
+  /**
+   * Helper to get component terminal positions
+   */
+  getComponentPins(comp) {
+    const px = comp.x || 0;
+    const py = comp.y || 0;
+    const type = comp.type;
+
+    if (type === 'resistor') {
+      if (comp.rotation === 90) {
+        return [{ name: '1', x: px + 12, y: py + 4 }, { name: '2', x: px + 12, y: py + 76 }];
+      }
+      return [{ name: '1', x: px + 4, y: py + 12 }, { name: '2', x: px + 76, y: py + 12 }];
+    }
+    if (type === 'led') {
+      return [{ name: 'a', x: px + 10, y: py + 38 }, { name: 'c', x: px + 22, y: py + 38 }];
+    }
+    if (type === 'capacitor') {
+      return [{ name: '1', x: px + 6, y: py + 30 }, { name: '2', x: px + 18, y: py + 30 }];
+    }
+    if (type === 'diode') {
+      return [{ name: 'anode', x: px + 6, y: py + 10 }, { name: 'cathode', x: px + 64, y: py + 10 }];
+    }
+    if (type === 'pushbutton') {
+      return [
+        { name: '1a', x: px + 8, y: py + 8 },
+        { name: '1b', x: px + 8, y: py + 28 },
+        { name: '2a', x: px + 28, y: py + 8 },
+        { name: '2b', x: px + 28, y: py + 28 }
+      ];
+    }
+    if (type.startsWith('chip-') || type === 'dip-ic') {
+      const pins = [];
+      for (let i = 1; i <= 7; i++) {
+        pins.push({ name: String(i), x: px + 18 + (i - 1) * 20, y: py + 52 });
+      }
+      for (let i = 8; i <= 14; i++) {
+        pins.push({ name: String(i), x: px + 18 + (14 - i) * 20, y: py + 2 });
+      }
+      return pins;
+    }
+    return [];
+  },
+
+  /**
+   * Helper to map absolute pin coordinates to a breadboard hole name
+   */
+  resolveHoleOnBreadboard(px, py, bb) {
+    if (bb.type === 'breadboard-half') {
+      const col = Math.round((px - (bb.x + 28)) / 17.5) + 1;
+      if (col < 1 || col > 30) return null;
+
+      // Top power rails
+      if (Math.abs(py - (bb.y + 22)) <= 8) return `tn.${col}`;
+      if (Math.abs(py - (bb.y + 36)) <= 8) return `tp.${col}`;
+
+      // Top terminal strip: j, i, h, g, f
+      if (py >= bb.y + 55 && py <= bb.y + 115) {
+        const r = Math.round((py - (bb.y + 64)) / 11);
+        const rows = ['j', 'i', 'h', 'g', 'f'];
+        const rowLetter = rows[Math.max(0, Math.min(4, r))];
+        return `${col}t.${rowLetter}`;
+      }
+
+      // Bottom terminal strip: e, d, c, b, a
+      if (py >= bb.y + 130 && py <= bb.y + 190) {
+        const r = Math.round((py - (bb.y + 138)) / 11);
+        const rows = ['e', 'd', 'c', 'b', 'a'];
+        const rowLetter = rows[Math.max(0, Math.min(4, r))];
+        return `${col}b.${rowLetter}`;
+      }
+
+      // Bottom power rails
+      if (Math.abs(py - (bb.y + 215)) <= 8) return `bn.${col}`;
+      if (Math.abs(py - (bb.y + 229)) <= 8) return `bp.${col}`;
+    }
+    return null;
   },
 
   /**
@@ -1258,7 +1380,7 @@ export const Translator = {
   /**
    * Bundle project into Standalone Universal HTML file
    */
-  exportStandaloneHTML(project) {
+  exportStandaloneHTML(project, renderedSvgInner = '') {
     const jsonStr = JSON.stringify(project, null, 2);
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1267,35 +1389,244 @@ export const Translator = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${project.metadata?.title || 'TCAD Circuit'} - Standalone Viewer</title>
   <style>
-    body { margin: 0; background: #060911; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
-    header { height: 48px; background: #0f172a; display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; border-bottom: 1px solid #1e293b; }
-    .badge { background: #38bdf8; color: #04060a; padding: 2px 8px; border-radius: 9999px; font-weight: bold; font-size: 0.75rem; }
-    #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-    svg { width: 100%; height: 100%; }
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --border-subtle: #1e293b;
+      --sky-primary: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      height: 52px;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--sky-primary);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+      color: #ffffff;
+    }
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+    #canvas-container.is-panning {
+      cursor: grabbing;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .zoom-controls {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .zoom-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    .zoom-btn:hover {
+      background: #0284c7;
+      border-color: #38bdf8;
+    }
   </style>
 </head>
 <body>
   <header>
-    <div><strong>${project.metadata?.title || 'Circuit Layout'}</strong> (Standalone Universal View)</div>
-    <div class="badge">TCAD-WOKWI-Translator</div>
+    <div class="header-brand">
+      <strong>${project.metadata?.title || 'Circuit Layout'}</strong>
+      <span class="badge">Standalone Universal HTML</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btn-download-json" title="Export Circuit JSON">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        Download JSON
+      </button>
+      <button class="btn btn-primary" id="btn-reset-view" title="Reset Pan & Zoom">
+        Reset View
+      </button>
+    </div>
   </header>
   <div id="canvas-container">
-    <svg id="circuit-svg" viewBox="0 0 1200 800">
+    <svg id="circuit-svg" viewBox="0 0 1400 900">
       <defs>
-        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1" fill="#1e293b"/>
+        <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="12" cy="12" r="1.2" fill="rgba(56, 189, 248, 0.18)"/>
         </pattern>
+        <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
       </defs>
-      <rect width="100%" height="100%" fill="url(#grid)" />
-      <!-- Components and wires rendered via embedded JSON -->
+      <rect width="100%" height="100%" fill="url(#canvas-grid)"/>
+      <g id="viewport-group">
+        ${renderedSvgInner}
+      </g>
     </svg>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Zoom Out">-</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset Zoom">1:1</button>
+    </div>
   </div>
   <script id="tcad-circuit-data" type="application/json">
 ${jsonStr}
   </script>
   <script>
-    const data = JSON.parse(document.getElementById('tcad-circuit-data').textContent);
-    console.log('Loaded standalone circuit:', data);
+    // Embedded Pan & Zoom Interactive Controls
+    let zoom = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    const container = document.getElementById('canvas-container');
+    const viewportGroup = document.getElementById('viewport-group');
+
+    function updateTransform() {
+      if (viewportGroup) {
+        viewportGroup.setAttribute('transform', \`translate(\${panX}, \${panY}) scale(\${zoom})\`);
+      }
+    }
+
+    container.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isPanning = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+      container.classList.add('is-panning');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isPanning = false;
+      container.classList.remove('is-panning');
+    });
+
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1.15 : 0.85;
+      zoom = Math.max(0.2, Math.min(4.0, zoom * delta));
+      updateTransform();
+    }, { passive: false });
+
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      zoom = Math.min(4.0, zoom * 1.25);
+      updateTransform();
+    });
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      zoom = Math.max(0.2, zoom / 1.25);
+      updateTransform();
+    });
+    document.getElementById('zoom-reset').addEventListener('click', () => {
+      zoom = 1.0; panX = 0; panY = 0;
+      updateTransform();
+    });
+    document.getElementById('btn-reset-view').addEventListener('click', () => {
+      zoom = 1.0; panX = 0; panY = 0;
+      updateTransform();
+    });
+
+    document.getElementById('btn-download-json').addEventListener('click', () => {
+      const dataStr = document.getElementById('tcad-circuit-data').textContent;
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'circuit.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   </script>
 </body>
 </html>`;

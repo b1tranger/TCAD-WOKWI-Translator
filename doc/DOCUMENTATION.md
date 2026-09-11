@@ -178,7 +178,7 @@ Opening this HTML file in any browser displays the circuit without internet acce
 
 The application utilizes a cache-first Service Worker (`sw.js`). Line 5 declares the synchronized cache identifier:
 ```javascript
-const CACHE_VERSION = 'v0.1.8';
+const CACHE_VERSION = 'v0.1.11';
 ```
 When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are served immediately from the Cache Storage API via a Network-First strategy with offline fallback.
 
@@ -186,7 +186,9 @@ When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are 
 
 ## Version History
 
-- **v0.1.0 to v0.1.8 (2026-09-11)**: Implemented interactive canvas component dragging with dynamic wire re-routing, grab/grabbing cursor states, fluid canvas background panning, and mouse-wheel zoom. Audited and expanded 38-component catalog with realistic SVG vector artwork and terminal resolvers. Added dynamic categorized sidebar palette with real-time search, click/drag placement, and reference circuit translation for all 7 reference designs. Offline cache upgraded to `v0.1.8`.
+- **v0.1.0 to v0.1.11 (2026-09-11)**: Resolved Wokwi export `UI.openModal` TypeError with dedicated modal helper methods. Redesigned mobile responsive layout with bottom expanding Floating Action Menu (FAB) and restored GitHub, Docs, and Changelog icons directly in the mobile top header for rapid 1-tap navigation. Optimized mobile touch tap-hold-and-drag interactions via `touch-action: none`, `e.preventDefault()`, and multi-touch 2-finger pinch-to-zoom. Synchronized offline cache to `v0.1.11`.
+
+
 
 
 

@@ -4,7 +4,63 @@ All notable changes to the **TCAD-WOKWI-Translator** project are documented in t
 
 ---
 
-## [v0.1.0 to v0.1.8] - 2026-09-11
+## [v0.1.0 to v0.1.11] - 2026-09-11
+
+### Header GitHub, Docs & Changelog Restoration on Mobile (v0.1.11)
+
+- **Mobile Top Bar Accessibility**:
+  - Restored the **GitHub**, **Technical Documentation**, and **Changelog** action buttons in the mobile top bar on screens $\le 768\text{px}$.
+  - On mobile devices, these buttons render as clean, touch-friendly icon buttons alongside the Code Inspector drawer toggle, maintaining visual balance without crowding.
+  - Circuit authoring and export actions (Import TCAD, Export Wokwi, Export HTML, Raw JSON) remain neatly organized in the bottom expanding Floating Action Menu (FAB).
+- **Offline Cache & Release Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.11';`.
+  - Updated asset queries to `?v=0.1.11` and badge in `index.html`.
+
+### Wokwi Modal Fix, Mobile Floating Action Menu & Touch Drag Gestures (v0.1.10)
+
+- **Resolved Wokwi Export TypeError**:
+  - Implemented `UI.openModal(modalIdOrEl)` and `UI.closeModal(modalIdOrEl)` in `js/ui.js`, resolving the `Uncaught TypeError: UI.openModal is not a function` error when opening `#modal-export-wokwi`.
+- **Mobile Clutter Elimination & Bottom Floating Action Menu (FAB)**:
+  - Cleared the mobile top header on screens $\le 768\text{px}$ by moving all functional actions (Import TCAD, Wokwi, HTML, JSON, Changelog, Docs, GitHub) out of `.toolbar-actions`.
+  - The mobile header now remains spacious and clean, showing only the Catalog drawer toggle, Brand logo & badge, and Inspector drawer toggle.
+  - Implemented an ergonomic bottom-right Floating Action Button (FAB) with animated icon transition (3-dots to close-X) and gentle pulsing glow ring.
+  - Tapping the FAB expands a frosted-glass popup card (`rgba(15, 23, 42, 0.95)`, `backdrop-filter: blur(16px)`) with tactile action tiles for all 7 functions.
+  - Tapping any action executes the function and automatically dismisses the menu sheet.
+- **Mobile Touch Tap-Hold and Drag Optimization**:
+  - Configured `touch-action: none;` and `-webkit-touch-callout: none; user-select: none;` on `.canvas-viewport`, `.canvas-svg`, and `.canvas-component`.
+  - Added `e.preventDefault()` on single-finger `touchstart` to stop mobile OS scroll interception, text selection, and magnifier activation.
+  - Added multi-touch 2-finger pinch-to-zoom calculation with smooth canvas scaling.
+  - Added `touchcancel` handling to prevent stuck dragging states during phone calls or system gesture interruptions.
+- **Offline Cache & Release Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.10';`.
+  - Updated asset queries to `?v=0.1.10` and badge in `index.html`.
+
+### HTML Export Fix, Wokwi Export Modal, Breadboard Snapping & Tinkercad Styling (v0.1.9)
+
+- **Standalone HTML Export Graphic Restoration**:
+  - Fixed the blank canvas issue by directly embedding pre-rendered SVG elements into `#viewport-group` within the exported `.html` file.
+  - Included fully self-contained interactive pan and zoom controls, reset view button, and JSON download capability in the standalone viewer.
+  - Maintained bidirectional re-import compatibility via embedded `<script id="tcad-circuit-data">`.
+- **Wokwi Export Modal Dialog**:
+  - Replaced immediate file download with a dedicated modal `#modal-export-wokwi`.
+  - Added step-by-step guidance card for simulating circuits in Wokwi.
+  - Added external simulator link to `https://wokwi.com/projects/new/arduino-uno` and Wokwi homepage.
+  - Added syntax-ready `<textarea>` code preview with live part and connection counts.
+  - Added 1-click clipboard copy with toast feedback and "Download diagram.json" action button.
+- **Breadboard Tie-Point Snapping & Logical Connection Synthesis**:
+  - Implemented tie-point snapping during drag operations for DIP IC chips, resistors, LEDs, and pushbuttons over half, full, and mini breadboards.
+  - Automatically synthesizes logical breadboard connections in `Translator.toWokwi(project)` linking inserted component leads directly to breadboard terminal strips and power rails.
+- **Authentic Tinkercad Component Aesthetics**:
+  - Upgraded breadboard artwork with warm bone-white `#f8f7f2` casing, bevel highlights, red/blue power lines, column numbers, row letters, and recessed metallic tie holes.
+  - Redesigned resistors with ceramic dumbbell bodies, bulbous ends, and color-coded bands.
+  - Redesigned LEDs with translucent glass dome reflections, visible anvil/post leadframe, and raised collar rim.
+  - Redesigned DIP ICs with matte molded epoxy bodies, semi-circular orientation notches, pin 1 index dots, and floating labels.
+  - Redesigned Arduino Uno with genuine turquoise PCB `#00878a`, metal USB-B port, and silkscreen header labels.
+- **Header GitHub Repository Link**:
+  - Added GitHub repository icon button linking directly to `https://github.com/b1tranger/TCAD-WOKWI-Translator`.
+- **Offline Cache Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.9';`.
+  - Updated asset queries to `?v=0.1.9` across `index.html`.
 
 ### Interactive Component Drag-and-Drop Repositioning & Canvas Panning (v0.1.8)
 

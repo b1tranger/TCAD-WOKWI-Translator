@@ -28,7 +28,14 @@ export class CircuitRenderer {
 
   initInteractions() {
     const handleStart = (clientX, clientY, target) => {
-      const compEl = target ? target.closest('.canvas-component') : null;
+      let compEl = target ? target.closest('.canvas-component') : null;
+      if (!compEl) {
+        const elUnder = document.elementFromPoint(clientX, clientY);
+        if (elUnder) {
+          compEl = elUnder.closest('.canvas-component');
+        }
+      }
+
       if (compEl && this.currentProject) {
         const compId = compEl.getAttribute('data-id');
         const comp = (this.currentProject.components || []).find((c) => c.id === compId);
@@ -38,23 +45,29 @@ export class CircuitRenderer {
           this.dragStartPos = { x: clientX, y: clientY };
           this.compStartPos = { x: comp.x, y: comp.y };
           compEl.classList.add('is-dragging');
-          return;
+          return true;
         }
       }
 
-      // Otherwise click on empty canvas starts canvas pan
+      // Otherwise click or touch on canvas background starts canvas pan
       this.isPanning = true;
       this.panStartPos = { x: clientX, y: clientY };
       this.canvasStartPan = { x: this.panX, y: this.panY };
       this.svg.classList.add('is-panning');
+      return false;
     };
 
     const handleMove = (clientX, clientY) => {
       if (this.isDraggingComp && this.activeComp) {
         const dx = (clientX - this.dragStartPos.x) / this.zoom;
         const dy = (clientY - this.dragStartPos.y) / this.zoom;
-        this.activeComp.x = Math.round(this.compStartPos.x + dx);
-        this.activeComp.y = Math.round(this.compStartPos.y + dy);
+        const rawX = Math.round(this.compStartPos.x + dx);
+        const rawY = Math.round(this.compStartPos.y + dy);
+
+        const snapped = this.snapComponentToBreadboard(this.activeComp, rawX, rawY);
+        this.activeComp.x = snapped.x;
+        this.activeComp.y = snapped.y;
+
         this.render(this.currentProject);
         if (typeof this.options.onComponentMove === 'function') {
           this.options.onComponentMove(this.activeComp, false);
@@ -86,7 +99,7 @@ export class CircuitRenderer {
       }
     };
 
-    // Mouse Listeners
+    // Mouse Listeners (Desktop)
     this.svg.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
       handleStart(e.clientX, e.clientY, e.target);
@@ -104,13 +117,31 @@ export class CircuitRenderer {
       }
     });
 
-    // Touch Listeners
+    // Touch Listeners (Mobile & Tablet)
+    let isPinching = false;
+    let initialPinchDist = 0;
+    let initialPinchZoom = 1.0;
+
     this.svg.addEventListener(
       'touchstart',
       (e) => {
         if (e.touches.length === 1) {
+          isPinching = false;
           const t = e.touches[0];
           handleStart(t.clientX, t.clientY, e.target);
+          e.preventDefault();
+        } else if (e.touches.length === 2) {
+          // Multi-touch pinch to zoom
+          if (this.isDraggingComp) {
+            handleEnd();
+          }
+          isPinching = true;
+          initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialPinchZoom = this.zoom;
+          e.preventDefault();
         }
       },
       { passive: false }
@@ -119,18 +150,36 @@ export class CircuitRenderer {
     window.addEventListener(
       'touchmove',
       (e) => {
-        if (this.isDraggingComp || this.isPanning) {
-          if (e.touches.length === 1) {
-            const t = e.touches[0];
-            handleMove(t.clientX, t.clientY);
-            e.preventDefault();
+        if (isPinching && e.touches.length === 2) {
+          const currentDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (initialPinchDist > 0) {
+            const scale = currentDist / initialPinchDist;
+            this.setZoom(initialPinchZoom * scale);
           }
+          e.preventDefault();
+        } else if ((this.isDraggingComp || this.isPanning) && e.touches.length === 1) {
+          const t = e.touches[0];
+          handleMove(t.clientX, t.clientY);
+          e.preventDefault();
         }
       },
       { passive: false }
     );
 
-    window.addEventListener('touchend', () => {
+    window.addEventListener('touchend', (e) => {
+      if (isPinching && e.touches.length < 2) {
+        isPinching = false;
+      }
+      if (this.isDraggingComp || this.isPanning) {
+        handleEnd();
+      }
+    });
+
+    window.addEventListener('touchcancel', () => {
+      isPinching = false;
       if (this.isDraggingComp || this.isPanning) {
         handleEnd();
       }
@@ -146,6 +195,92 @@ export class CircuitRenderer {
       },
       { passive: false }
     );
+  }
+
+  snapComponentToBreadboard(comp, rawX, rawY) {
+    if (!this.currentProject || comp.type.startsWith('breadboard')) {
+      return { x: rawX, y: rawY, isSnapped: false };
+    }
+
+    const breadboards = (this.currentProject.components || []).filter((c) =>
+      c.type === 'breadboard-half' || c.type === 'breadboard-full' || c.type === 'breadboard-mini'
+    );
+    if (breadboards.length === 0) {
+      return { x: rawX, y: rawY, isSnapped: false };
+    }
+
+    for (const bb of breadboards) {
+      const bbWidth = bb.type === 'breadboard-full' ? 680 : bb.type === 'breadboard-mini' ? 240 : 560;
+      const bbHeight = 252;
+      const colPitch = bb.type === 'breadboard-full' ? 10 : bb.type === 'breadboard-mini' ? 11 : 17.5;
+      const startX = bb.type === 'breadboard-full' ? 22 : bb.type === 'breadboard-mini' ? 20 : 28;
+      const maxCols = bb.type === 'breadboard-full' ? 63 : bb.type === 'breadboard-mini' ? 17 : 30;
+
+      if (
+        rawX >= bb.x - 30 &&
+        rawX <= bb.x + bbWidth - 20 &&
+        rawY >= bb.y - 20 &&
+        rawY <= bb.y + bbHeight - 10
+      ) {
+        // 1. DIP IC chips (straddle center groove at bb.y + 70)
+        if (comp.type.startsWith('chip-') || comp.type === 'dip-ic') {
+          const targetCol = Math.round((rawX + 18 - (bb.x + startX)) / colPitch) + 1;
+          const clampedCol = Math.max(1, Math.min(maxCols - 6, targetCol));
+          const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 18);
+          const snappedY = Math.round(bb.y + 70);
+          return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+        }
+
+        // 2. Resistor
+        if (comp.type === 'resistor') {
+          if (comp.rotation === 90) {
+            const targetCol = Math.round((rawX + 12 - (bb.x + startX)) / colPitch) + 1;
+            const clampedCol = Math.max(1, Math.min(maxCols, targetCol));
+            const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 12);
+            const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+            const targetRowY = Math.round((rawY + 4 - rowBase) / 11) * 11 + rowBase;
+            const snappedY = Math.round(targetRowY - 4);
+            return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+          } else {
+            const targetCol = Math.round((rawX + 4 - (bb.x + startX)) / colPitch) + 1;
+            const clampedCol = Math.max(1, Math.min(maxCols - 3, targetCol));
+            const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 4);
+            const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+            const targetRowY = Math.round((rawY + 12 - rowBase) / 11) * 11 + rowBase;
+            const snappedY = Math.round(targetRowY - 12);
+            return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+          }
+        }
+
+        // 3. LED
+        if (comp.type === 'led') {
+          const targetCol = Math.round((rawX + 10 - (bb.x + startX)) / colPitch) + 1;
+          const clampedCol = Math.max(1, Math.min(maxCols - 1, targetCol));
+          const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 10);
+          const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+          const targetRowY = Math.round((rawY + 38 - rowBase) / 11) * 11 + rowBase;
+          const snappedY = Math.round(targetRowY - 38);
+          return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+        }
+
+        // 4. Pushbutton
+        if (comp.type === 'pushbutton') {
+          const targetCol = Math.round((rawX + 8 - (bb.x + startX)) / colPitch) + 1;
+          const clampedCol = Math.max(1, Math.min(maxCols - 1, targetCol));
+          const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 8);
+          const snappedY = Math.round(bb.y + 98); // straddle center groove
+          return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+        }
+
+        // 5. Default snap anchor
+        const targetCol = Math.round((rawX + 20 - (bb.x + startX)) / colPitch) + 1;
+        const clampedCol = Math.max(1, Math.min(maxCols, targetCol));
+        const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 20);
+        return { x: snappedX, y: rawY, isSnapped: true, bbId: bb.id, col: clampedCol };
+      }
+    }
+
+    return { x: rawX, y: rawY, isSnapped: false };
   }
 
   initViewport() {
@@ -764,55 +899,77 @@ export class CircuitRenderer {
 
   getBreadboardHalfSVG() {
     let holesSVG = '';
-    // Generate 30 column breadboard holes
+    // Generate 30 column breadboard holes with Tinkercad square recessed metallic contacts
     for (let c = 1; c <= 30; c++) {
       const cx = 28 + (c - 1) * 17.5;
       // Top power rails: (-) and (+)
-      holesSVG += `<circle cx="${cx}" cy="22" r="2.2" fill="#1e293b"/>`;
-      holesSVG += `<circle cx="${cx}" cy="36" r="2.2" fill="#1e293b"/>`;
+      holesSVG += `<rect x="${cx - 2.5}" y="19.5" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="22" r="0.9" fill="#94a3b8"/>`;
+      holesSVG += `<rect x="${cx - 2.5}" y="33.5" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="36" r="0.9" fill="#94a3b8"/>`;
       // Column numbers (every 5th)
       if (c === 1 || c % 5 === 0) {
-        holesSVG += `<text x="${cx}" y="52" font-size="7" fill="#64748b" text-anchor="middle" font-family="monospace">${c}</text>`;
-        holesSVG += `<text x="${cx}" y="202" font-size="7" fill="#64748b" text-anchor="middle" font-family="monospace">${c}</text>`;
+        holesSVG += `<text x="${cx}" y="53" font-size="7.5" fill="#475569" text-anchor="middle" font-family="monospace" font-weight="600">${c}</text>`;
+        holesSVG += `<text x="${cx}" y="201" font-size="7.5" fill="#475569" text-anchor="middle" font-family="monospace" font-weight="600">${c}</text>`;
       }
       // Top grid (j, i, h, g, f)
       for (let r = 0; r < 5; r++) {
-        holesSVG += `<circle cx="${cx}" cy="${64 + r * 11}" r="2" fill="#334155"/>`;
+        const cy = 64 + r * 11;
+        holesSVG += `<rect x="${cx - 2.5}" y="${cy - 2.5}" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="${cy}" r="0.9" fill="#94a3b8"/>`;
       }
       // Bottom grid (e, d, c, b, a)
       for (let r = 0; r < 5; r++) {
-        holesSVG += `<circle cx="${cx}" cy="${138 + r * 11}" r="2" fill="#334155"/>`;
+        const cy = 138 + r * 11;
+        holesSVG += `<rect x="${cx - 2.5}" y="${cy - 2.5}" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="${cy}" r="0.9" fill="#94a3b8"/>`;
       }
       // Bottom power rails: (-) and (+)
-      holesSVG += `<circle cx="${cx}" cy="215" r="2.2" fill="#1e293b"/>`;
-      holesSVG += `<circle cx="${cx}" cy="229" r="2.2" fill="#1e293b"/>`;
+      holesSVG += `<rect x="${cx - 2.5}" y="212.5" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="215" r="0.9" fill="#94a3b8"/>`;
+      holesSVG += `<rect x="${cx - 2.5}" y="226.5" width="5" height="5" rx="1" fill="#18181b" stroke="#64748b" stroke-width="0.75"/><circle cx="${cx}" cy="229" r="0.9" fill="#94a3b8"/>`;
     }
 
-    return `
-      <!-- Breadboard Casing -->
-      <rect width="560" height="252" rx="12" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
-      <rect x="12" y="10" width="536" height="34" rx="4" fill="#cbd5e1" opacity="0.6"/>
-      <rect x="12" y="207" width="536" height="34" rx="4" fill="#cbd5e1" opacity="0.6"/>
+    // Row letters a..e and f..j on left and right
+    const rowLettersTop = ['j', 'i', 'h', 'g', 'f'];
+    const rowLettersBot = ['e', 'd', 'c', 'b', 'a'];
+    let labelsSVG = '';
+    rowLettersTop.forEach((l, i) => {
+      labelsSVG += `<text x="17" y="${67 + i * 11}" font-size="7" fill="#64748b" text-anchor="middle" font-family="sans-serif">${l}</text>`;
+      labelsSVG += `<text x="543" y="${67 + i * 11}" font-size="7" fill="#64748b" text-anchor="middle" font-family="sans-serif">${l}</text>`;
+    });
+    rowLettersBot.forEach((l, i) => {
+      labelsSVG += `<text x="17" y="${141 + i * 11}" font-size="7" fill="#64748b" text-anchor="middle" font-family="sans-serif">${l}</text>`;
+      labelsSVG += `<text x="543" y="${141 + i * 11}" font-size="7" fill="#64748b" text-anchor="middle" font-family="sans-serif">${l}</text>`;
+    });
 
-      <!-- Power Rails Lines -->
-      <line x1="20" y1="16" x2="540" y2="16" stroke="#0f172a" stroke-width="2"/>
+    return `
+      <!-- Tinkercad Bone-White Breadboard Casing -->
+      <rect width="560" height="252" rx="10" fill="#f8f7f2" stroke="#d5d0c3" stroke-width="2.5" filter="drop-shadow(0 4px 10px rgba(0,0,0,0.15))"/>
+      <rect x="5" y="5" width="550" height="242" rx="7" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+
+      <!-- Power Rails Backing Strips -->
+      <rect x="12" y="10" width="536" height="34" rx="4" fill="#eeeae0" opacity="0.8"/>
+      <rect x="12" y="207" width="536" height="34" rx="4" fill="#eeeae0" opacity="0.8"/>
+
+      <!-- Power Rails Lines: Blue (-) and Red (+) -->
+      <line x1="20" y1="16" x2="540" y2="16" stroke="#2563eb" stroke-width="2"/>
       <line x1="20" y1="42" x2="540" y2="42" stroke="#ef4444" stroke-width="2"/>
-      <line x1="20" y1="210" x2="540" y2="210" stroke="#0f172a" stroke-width="2"/>
+      <line x1="20" y1="210" x2="540" y2="210" stroke="#2563eb" stroke-width="2"/>
       <line x1="20" y1="236" x2="540" y2="236" stroke="#ef4444" stroke-width="2"/>
 
       <!-- Rail Symbols -->
-      <text x="16" y="25" font-size="12" font-weight="bold" fill="#0f172a">-</text>
+      <text x="16" y="25" font-size="12" font-weight="bold" fill="#2563eb">-</text>
       <text x="16" y="39" font-size="12" font-weight="bold" fill="#ef4444">+</text>
-      <text x="548" y="25" font-size="12" font-weight="bold" fill="#0f172a">-</text>
+      <text x="548" y="25" font-size="12" font-weight="bold" fill="#2563eb">-</text>
       <text x="548" y="39" font-size="12" font-weight="bold" fill="#ef4444">+</text>
 
-      <text x="16" y="219" font-size="12" font-weight="bold" fill="#0f172a">-</text>
+      <text x="16" y="219" font-size="12" font-weight="bold" fill="#2563eb">-</text>
       <text x="16" y="233" font-size="12" font-weight="bold" fill="#ef4444">+</text>
-      <text x="548" y="219" font-size="12" font-weight="bold" fill="#0f172a">-</text>
+      <text x="548" y="219" font-size="12" font-weight="bold" fill="#2563eb">-</text>
       <text x="548" y="233" font-size="12" font-weight="bold" fill="#ef4444">+</text>
 
-      <!-- Center Divider Trough -->
-      <rect x="12" y="118" width="536" height="12" fill="#94a3b8"/>
+      <!-- Center Divider Trough with Inner Shading -->
+      <rect x="12" y="118" width="536" height="12" rx="2" fill="#d8d3c5" stroke="#c4beaf" stroke-width="1"/>
+      <line x1="12" y1="124" x2="548" y2="124" stroke="#beb8a8" stroke-width="1"/>
+
+      <!-- Row Labels -->
+      ${labelsSVG}
 
       <!-- Holes & Markings -->
       ${holesSVG}
@@ -907,12 +1064,12 @@ export class CircuitRenderer {
     let pinsTop = '';
     let pinsBottom = '';
     for (let p = 0; p < 7; p++) {
-      pinsTop += `<rect x="${14 + p * 20}" y="-6" width="9" height="7" rx="1" fill="#94a3b8"/>`;
-      pinsBottom += `<rect x="${14 + p * 20}" y="52" width="9" height="7" rx="1" fill="#94a3b8"/>`;
+      pinsTop += `<rect x="${14 + p * 20}" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"/>`;
+      pinsBottom += `<rect x="${14 + p * 20}" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"/>`;
     }
 
     return `
-      <!-- Top Functional Tag (e.g. "OR gate", "NOT gate") like Tinkercad -->
+      <!-- Tinkercad Floating Tag Badge -->
       <g transform="translate(60, -32)">
         <rect x="-30" y="0" width="60" height="20" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"/>
         <text x="0" y="13" font-size="9" font-weight="bold" fill="#334155" text-anchor="middle" font-family="sans-serif">${tag}</text>
@@ -920,62 +1077,121 @@ export class CircuitRenderer {
         <line x1="-2.5" y1="28" x2="2.5" y2="28" stroke="#64748b" stroke-width="1"/>
       </g>
 
-      <!-- Pins -->
+      <!-- Silver Dual-in-Line Pin Legs -->
       ${pinsTop}
       ${pinsBottom}
 
-      <!-- Plastic DIP-14 Package -->
-      <rect width="154" height="54" rx="4" fill="#18181b" stroke="#3f3f46" stroke-width="2"/>
-      <!-- Notch on left -->
-      <path d="M 0 20 A 7 7 0 0 1 0 34 Z" fill="#27272a"/>
-      <!-- Pin 1 Dot -->
-      <circle cx="16" cy="38" r="3" fill="#3f3f46"/>
+      <!-- Tinkercad Molded Epoxy DIP-14 Package -->
+      <rect width="154" height="54" rx="3" fill="#18181b" stroke="#27272a" stroke-width="2" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.4))"/>
+      <rect x="2" y="2" width="150" height="50" rx="2" fill="#202023" stroke="#2e2e32" stroke-width="0.75"/>
+      <!-- Semicircular orientation notch on left -->
+      <path d="M 2 20 A 7 7 0 0 1 2 34 Z" fill="#141416"/>
+      <!-- Pin 1 Circular Dot Index -->
+      <circle cx="16" cy="38" r="3" fill="#141416" stroke="#27272a" stroke-width="0.5"/>
 
-      <!-- Silk Screen Chip Label -->
-      <text x="80" y="32" font-size="14" font-weight="bold" fill="#f4f4f5" text-anchor="middle" font-family="monospace">${label}</text>
+      <!-- Crisp White Silkscreen Part Label -->
+      <text x="82" y="32" font-size="13" font-weight="bold" fill="#f4f4f5" text-anchor="middle" font-family="monospace" letter-spacing="1">${label}</text>
+      <text x="82" y="44" font-size="7.5" fill="#a1a1aa" text-anchor="middle" font-family="sans-serif">TINKERCAD IC</text>
     `;
   }
 
   getArduinoUnoSVG() {
     return `
-      <rect width="280" height="200" rx="8" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
-      <!-- USB port -->
-      <rect x="-10" y="20" width="30" height="35" rx="2" fill="#94a3b8" stroke="#64748b"/>
-      <!-- Power barrel jack -->
-      <rect x="-10" y="130" width="35" height="45" rx="2" fill="#1e293b"/>
-      <!-- ATmega chip -->
-      <rect x="110" y="70" width="80" height="40" rx="2" fill="#0f172a"/>
-      <text x="150" y="94" font-size="9" fill="#f8fafc" text-anchor="middle" font-weight="bold" font-family="monospace">ATmega328P</text>
-      <!-- Header sockets -->
-      <rect x="60" y="10" width="200" height="14" rx="2" fill="#0f172a"/>
-      <rect x="60" y="176" width="200" height="14" rx="2" fill="#0f172a"/>
-      <text x="150" y="145" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="middle" font-family="sans-serif">ARDUINO UNO</text>
+      <!-- Tinkercad Authentic Turquoise Uno PCB -->
+      <rect width="280" height="200" rx="8" fill="#00878a" stroke="#006669" stroke-width="2.5" filter="drop-shadow(0 6px 14px rgba(0,0,0,0.35))"/>
+      <rect x="6" y="6" width="268" height="188" rx="6" fill="none" stroke="#00979d" stroke-width="1.5"/>
+
+      <!-- USB Type-B Port (Metal Case) -->
+      <rect x="-12" y="18" width="34" height="38" rx="3" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="-8" y="22" width="18" height="30" rx="2" fill="#64748b"/>
+      <line x1="-12" y1="28" x2="22" y2="28" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="-12" y1="46" x2="22" y2="46" stroke="#94a3b8" stroke-width="1"/>
+
+      <!-- DC Power Barrel Jack (Black) -->
+      <rect x="-12" y="128" width="38" height="48" rx="4" fill="#18181b" stroke="#27272a" stroke-width="2"/>
+      <circle cx="6" cy="152" r="7" fill="#3f3f46"/>
+      <circle cx="6" cy="152" r="3" fill="#09090b"/>
+
+      <!-- 16 MHz Quartz Crystal Oscillator -->
+      <rect x="65" y="68" width="18" height="36" rx="9" fill="#94a3b8" stroke="#64748b" stroke-width="1.5"/>
+      <text x="74" y="88" font-size="6" fill="#1e293b" text-anchor="middle" font-family="monospace">16.0</text>
+
+      <!-- Yellow Reset Button -->
+      <rect x="52" y="18" width="16" height="16" rx="3" fill="#18181b" stroke="#334155" stroke-width="1"/>
+      <circle cx="60" cy="26" r="5" fill="#eab308" stroke="#ca8a04" stroke-width="1"/>
+
+      <!-- ATmega328P DIP Socket and Chip -->
+      <rect x="108" y="68" width="84" height="44" rx="3" fill="#18181b" stroke="#27272a" stroke-width="2"/>
+      <!-- Notch on left -->
+      <path d="M 108 84 A 6 6 0 0 1 108 96 Z" fill="#27272a"/>
+      <text x="150" y="88" font-size="9" fill="#ffffff" text-anchor="middle" font-weight="bold" font-family="monospace">ATmega328P</text>
+      <text x="150" y="100" font-size="7" fill="#38bdf8" text-anchor="middle" font-family="monospace">ARDUINO</text>
+
+      <!-- Female Pin Headers with Crisp White Silkscreen -->
+      <!-- Digital I/O Header (top) -->
+      <rect x="64" y="10" width="198" height="15" rx="2" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+      <!-- Analog & Power Headers (bottom) -->
+      <rect x="64" y="175" width="198" height="15" rx="2" fill="#18181b" stroke="#27272a" stroke-width="1.5"/>
+
+      <!-- Header Pin Sockets -->
+      ${Array.from({ length: 16 }).map((_, i) => `<rect x="${68 + i * 12}" y="13" width="7" height="9" rx="1" fill="#09090b" stroke="#334155" stroke-width="0.5"/><circle cx="${71.5 + i * 12}" cy="17.5" r="1.5" fill="#ca8a04"/>`).join('')}
+      ${Array.from({ length: 16 }).map((_, i) => `<rect x="${68 + i * 12}" y="178" width="7" height="9" rx="1" fill="#09090b" stroke="#334155" stroke-width="0.5"/><circle cx="${71.5 + i * 12}" cy="182.5" r="1.5" fill="#ca8a04"/>`).join('')}
+
+      <!-- Silkscreen Header Labels -->
+      <text x="160" y="34" font-size="7" fill="#ffffff" text-anchor="middle" font-weight="600" font-family="sans-serif">DIGITAL (PWM ~)</text>
+      <text x="105" y="168" font-size="7" fill="#ffffff" text-anchor="middle" font-weight="600" font-family="sans-serif">POWER</text>
+      <text x="210" y="168" font-size="7" fill="#ffffff" text-anchor="middle" font-weight="600" font-family="sans-serif">ANALOG IN</text>
+
+      <!-- Brand Logo / Name -->
+      <text x="160" y="142" font-size="15" fill="#ffffff" font-weight="800" text-anchor="middle" font-family="sans-serif" letter-spacing="1">UNO</text>
+      <text x="160" y="156" font-size="8" fill="#e2e8f0" font-weight="bold" text-anchor="middle" font-family="sans-serif">ARDUINO</text>
     `;
   }
 
-  getResistorSVG() {
+  getResistorSVG(comp) {
+    const valueStr = comp?.properties?.resistance || '220 Ω';
     return `
-      <line x1="0" y1="12" x2="20" y2="12" stroke="#94a3b8" stroke-width="3"/>
-      <rect x="20" y="4" width="40" height="16" rx="4" fill="#d97706" stroke="#b45309" stroke-width="1.5"/>
-      <line x1="28" y1="4" x2="28" y2="20" stroke="#ef4444" stroke-width="2"/>
-      <line x1="36" y1="4" x2="36" y2="20" stroke="#ef4444" stroke-width="2"/>
-      <line x1="44" y1="4" x2="44" y2="20" stroke="#b45309" stroke-width="2"/>
-      <line x1="52" y1="4" x2="52" y2="20" stroke="#f59e0b" stroke-width="2"/>
-      <line x1="60" y1="12" x2="80" y2="12" stroke="#94a3b8" stroke-width="3"/>
+      <!-- Tinkercad Resistor: Ceramic dumbbell body with silver leads -->
+      <line x1="0" y1="12" x2="18" y2="12" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+      <!-- Dumbbell body shape -->
+      <rect x="18" y="4" width="44" height="16" rx="4" fill="#deb887" stroke="#b45309" stroke-width="1.2"/>
+      <rect x="22" y="5" width="36" height="14" rx="2" fill="#e2b170"/>
+      <!-- Bulge ends -->
+      <circle cx="20" cy="12" r="7.5" fill="#deb887" stroke="#b45309" stroke-width="1.2"/>
+      <circle cx="60" cy="12" r="7.5" fill="#deb887" stroke="#b45309" stroke-width="1.2"/>
+      <!-- Color Bands (Red Red Brown Gold) -->
+      <rect x="25" y="4" width="4" height="16" fill="#ef4444"/>
+      <rect x="33" y="5" width="4" height="14" fill="#ef4444"/>
+      <rect x="41" y="5" width="4" height="14" fill="#b45309"/>
+      <rect x="52" y="4" width="4" height="16" fill="#f59e0b"/>
+      <line x1="62" y1="12" x2="80" y2="12" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+      <!-- Tinkercad Floating Label Badge -->
+      <g transform="translate(40, -18)">
+        <rect x="-22" y="0" width="44" height="16" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"/>
+        <text x="0" y="11" font-size="8" font-weight="bold" fill="#334155" text-anchor="middle" font-family="sans-serif">${valueStr}</text>
+        <circle cx="0" cy="21" r="3" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      </g>
     `;
   }
 
   getLedSVG(comp) {
     const color = comp?.properties?.color || 'red';
-    const fill = color === 'green' ? '#22c55e' : color === 'blue' ? '#38bdf8' : '#ef4444';
-    const stroke = color === 'green' ? '#16a34a' : color === 'blue' ? '#0284c7' : '#dc2626';
+    const fill = color === 'green' ? '#22c55e' : color === 'blue' ? '#38bdf8' : color === 'yellow' ? '#facc15' : '#ef4444';
+    const stroke = color === 'green' ? '#16a34a' : color === 'blue' ? '#0284c7' : color === 'yellow' ? '#ca8a04' : '#dc2626';
 
     return `
-      <circle cx="16" cy="16" r="14" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-      <circle cx="12" cy="12" r="5" fill="#ffffff" opacity="0.4"/>
-      <!-- Anode (bent) and Cathode (straight) pins -->
-      <line x1="10" y1="30" x2="10" y2="40" stroke="#94a3b8" stroke-width="2.5"/>
-      <line x1="22" y1="30" x2="22" y2="44" stroke="#94a3b8" stroke-width="2.5"/>
+      <!-- Silver pin leads extending down into breadboard holes -->
+      <line x1="10" y1="28" x2="10" y2="40" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="22" y1="28" x2="22" y2="44" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Raised base rim flange collar -->
+      <rect x="4" y="23" width="24" height="5" rx="2.5" fill="${stroke}"/>
+      <!-- Translucent 5mm LED Dome with glass highlights -->
+      <circle cx="16" cy="15" r="12" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+      <!-- Glass reflection highlight -->
+      <ellipse cx="12" cy="11" rx="4.5" ry="2.8" fill="#ffffff" opacity="0.5"/>
+      <!-- Internal leadframe: anvil & post -->
+      <polygon points="12,17 15,12 17,17 14,23" fill="#ffffff" opacity="0.65"/>
+      <line x1="17" y1="13" x2="17" y2="23" stroke="#ffffff" stroke-width="1.5" opacity="0.75"/>
     `;
   }
 
@@ -1010,16 +1226,22 @@ export class CircuitRenderer {
 
   getPushbuttonSVG(comp) {
     return `
-      <!-- Metal Pins -->
-      <rect x="-3" y="6" width="6" height="4" rx="1" fill="#94a3b8"/>
-      <rect x="-3" y="26" width="6" height="4" rx="1" fill="#94a3b8"/>
-      <rect x="33" y="6" width="6" height="4" rx="1" fill="#94a3b8"/>
-      <rect x="33" y="26" width="6" height="4" rx="1" fill="#94a3b8"/>
-      <!-- Square Body -->
-      <rect width="36" height="36" rx="4" fill="#1e293b" stroke="#334155" stroke-width="2"/>
-      <!-- Circular Actuator -->
-      <circle cx="18" cy="18" r="11" fill="#475569" stroke="#64748b" stroke-width="1.5"/>
-      <circle cx="18" cy="18" r="8" fill="#334155"/>
+      <!-- Metal Pins for Breadboard Insertion -->
+      <rect x="-4" y="6" width="7" height="4" rx="1" fill="#cbd5e1"/>
+      <rect x="-4" y="26" width="7" height="4" rx="1" fill="#cbd5e1"/>
+      <rect x="33" y="6" width="7" height="4" rx="1" fill="#cbd5e1"/>
+      <rect x="33" y="26" width="7" height="4" rx="1" fill="#cbd5e1"/>
+      <!-- Tinkercad Tactile Switch Body -->
+      <rect width="36" height="36" rx="4" fill="#18181b" stroke="#27272a" stroke-width="2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"/>
+      <!-- 4 Chrome Corner Tabs -->
+      <rect x="2" y="2" width="6" height="6" rx="1" fill="#94a3b8"/>
+      <rect x="28" y="2" width="6" height="6" rx="1" fill="#94a3b8"/>
+      <rect x="2" y="28" width="6" height="6" rx="1" fill="#94a3b8"/>
+      <rect x="28" y="28" width="6" height="6" rx="1" fill="#94a3b8"/>
+      <!-- Round Raised Tactile Button Cap with Bevel -->
+      <circle cx="18" cy="18" r="10" fill="#27272a" stroke="#3f3f46" stroke-width="1.5"/>
+      <circle cx="18" cy="18" r="8" fill="#18181b"/>
+      <circle cx="16" cy="16" r="3" fill="#ffffff" opacity="0.2"/>
     `;
   }
 
@@ -1106,24 +1328,35 @@ export class CircuitRenderer {
     let holes = '';
     for (let c = 1; c <= 63; c++) {
       const cx = 22 + (c - 1) * 10;
-      holes += `<circle cx="${cx}" cy="20" r="1.8" fill="#1e293b"/>`;
-      holes += `<circle cx="${cx}" cy="34" r="1.8" fill="#1e293b"/>`;
+      holes += `<rect x="${cx - 2}" y="18" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="20" r="0.7" fill="#94a3b8"/>`;
+      holes += `<rect x="${cx - 2}" y="32" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="34" r="0.7" fill="#94a3b8"/>`;
       if (c === 1 || c % 5 === 0) {
-        holes += `<text x="${cx}" y="48" font-size="6" fill="#64748b" text-anchor="middle" font-family="monospace">${c}</text>`;
-        holes += `<text x="${cx}" y="202" font-size="6" fill="#64748b" text-anchor="middle" font-family="monospace">${c}</text>`;
+        holes += `<text x="${cx}" y="48" font-size="6" fill="#475569" text-anchor="middle" font-family="monospace" font-weight="600">${c}</text>`;
+        holes += `<text x="${cx}" y="202" font-size="6" fill="#475569" text-anchor="middle" font-family="monospace" font-weight="600">${c}</text>`;
       }
-      for (let r = 0; r < 5; r++) holes += `<circle cx="${cx}" cy="${58 + r * 11}" r="1.6" fill="#334155"/>`;
-      for (let r = 0; r < 5; r++) holes += `<circle cx="${cx}" cy="${138 + r * 11}" r="1.6" fill="#334155"/>`;
-      holes += `<circle cx="${cx}" cy="215" r="1.8" fill="#1e293b"/>`;
-      holes += `<circle cx="${cx}" cy="229" r="1.8" fill="#1e293b"/>`;
+      for (let r = 0; r < 5; r++) {
+        const cy = 58 + r * 11;
+        holes += `<rect x="${cx - 2}" y="${cy - 2}" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="${cy}" r="0.7" fill="#94a3b8"/>`;
+      }
+      for (let r = 0; r < 5; r++) {
+        const cy = 138 + r * 11;
+        holes += `<rect x="${cx - 2}" y="${cy - 2}" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="${cy}" r="0.7" fill="#94a3b8"/>`;
+      }
+      holes += `<rect x="${cx - 2}" y="213" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="215" r="0.7" fill="#94a3b8"/>`;
+      holes += `<rect x="${cx - 2}" y="227" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="229" r="0.7" fill="#94a3b8"/>`;
     }
     return `
-      <rect width="660" height="252" rx="12" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
-      <line x1="16" y1="27" x2="644" y2="27" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4 2"/>
-      <line x1="16" y1="41" x2="644" y2="41" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4 2"/>
-      <line x1="16" y1="208" x2="644" y2="208" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="4 2"/>
-      <line x1="16" y1="222" x2="644" y2="222" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4 2"/>
-      <rect x="16" y="118" width="628" height="10" fill="#94a3b8" rx="2"/>
+      <!-- Tinkercad 63-Column Full Breadboard -->
+      <rect width="660" height="252" rx="10" fill="#f8f7f2" stroke="#d5d0c3" stroke-width="2.5" filter="drop-shadow(0 4px 10px rgba(0,0,0,0.15))"/>
+      <rect x="5" y="5" width="650" height="242" rx="7" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+      <!-- Power Rail Lines -->
+      <line x1="16" y1="16" x2="644" y2="16" stroke="#2563eb" stroke-width="2"/>
+      <line x1="16" y1="40" x2="644" y2="40" stroke="#ef4444" stroke-width="2"/>
+      <line x1="16" y1="211" x2="644" y2="211" stroke="#2563eb" stroke-width="2"/>
+      <line x1="16" y1="235" x2="644" y2="235" stroke="#ef4444" stroke-width="2"/>
+      <!-- Center Trough -->
+      <rect x="16" y="118" width="628" height="12" rx="2" fill="#d8d3c5" stroke="#c4beaf" stroke-width="1"/>
+      <line x1="16" y1="124" x2="644" y2="124" stroke="#beb8a8" stroke-width="1"/>
       ${holes}
     `;
   }
@@ -1132,12 +1365,22 @@ export class CircuitRenderer {
     let holes = '';
     for (let c = 1; c <= 17; c++) {
       const cx = 20 + (c - 1) * 11;
-      for (let r = 0; r < 5; r++) holes += `<circle cx="${cx}" cy="${25 + r * 11}" r="1.8" fill="#334155"/>`;
-      for (let r = 0; r < 5; r++) holes += `<circle cx="${cx}" cy="${95 + r * 11}" r="1.8" fill="#334155"/>`;
+      if (c === 1 || c % 5 === 0) {
+        holes += `<text x="${cx}" y="18" font-size="6" fill="#475569" text-anchor="middle" font-family="monospace">${c}</text>`;
+      }
+      for (let r = 0; r < 5; r++) {
+        const cy = 25 + r * 11;
+        holes += `<rect x="${cx - 2}" y="${cy - 2}" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="${cy}" r="0.7" fill="#94a3b8"/>`;
+      }
+      for (let r = 0; r < 5; r++) {
+        const cy = 95 + r * 11;
+        holes += `<rect x="${cx - 2}" y="${cy - 2}" width="4" height="4" rx="0.75" fill="#18181b" stroke="#64748b" stroke-width="0.5"/><circle cx="${cx}" cy="${cy}" r="0.7" fill="#94a3b8"/>`;
+      }
     }
     return `
-      <rect width="215" height="165" rx="10" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
-      <rect x="12" y="78" width="191" height="8" fill="#94a3b8" rx="2"/>
+      <!-- Tinkercad 17-Column Mini Breadboard -->
+      <rect width="215" height="165" rx="8" fill="#f8f7f2" stroke="#d5d0c3" stroke-width="2" filter="drop-shadow(0 3px 8px rgba(0,0,0,0.15))"/>
+      <rect x="12" y="78" width="191" height="10" rx="2" fill="#d8d3c5" stroke="#c4beaf" stroke-width="1"/>
       ${holes}
     `;
   }

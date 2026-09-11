@@ -2,7 +2,7 @@
 // Provides offline caching for the standalone web application
 // Synchronization target: keep version aligned across AGENTS.md, versions.md, README.md
 // Cache version identifier
-const CACHE_VERSION = 'v0.1.8';
+const CACHE_VERSION = 'v0.1.11';
 const CACHE_NAME = `tcad-wokwi-cache-${CACHE_VERSION}`;
 
 

@@ -1,6 +1,6 @@
 # TCAD-WOKWI-Translator
 
-[![Version](https://img.shields.io/badge/version-v0.1.8-blue.svg)](doc/versions.md)
+[![Version](https://img.shields.io/badge/version-v0.1.11-blue.svg)](doc/versions.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Zero-Dependency](https://img.shields.io/badge/dependencies-zero-success.svg)](#)
 [![PWA Ready](https://img.shields.io/badge/PWA-offline%20ready-sky.svg)](sw.js)
@@ -17,7 +17,7 @@ When Tinkercad exports circuits as `.brd` (Autodesk EAGLE PCB) files, they lose 
 **TCAD-WOKWI-Translator** bridges this gap:
 - **Tinkercad Ingestion**: Ingests public Tinkercad circuit links and JSON payloads to extract component coordinates, pin mappings, and wire curves.
 - **Wokwi Translation**: Translates breadboard circuits into Wokwi's native `diagram.json` syntax for direct simulation.
-- **Universal Standalone HTML Export**: Bundles any project into a self-contained single `.html` file that runs in any web browser without internet access, and can be dropped back into the app to resume visual editing.
+- **Universal Standalone HTML Export**: Bundles any project into a self-contained single `.html` file with embedded SVG graphics and pan/zoom controls that runs in any web browser without internet access, and can be dropped back into the app to resume visual editing.
 - **Offline PWA**: Full offline functionality via Service Worker caching (`sw.js`).
 
 ---
@@ -47,7 +47,7 @@ Open `index.html` directly in any modern browser (Chrome, Firefox, Edge, Safari)
 TCAD-WOKWI-Translator/
 ├── index.html               # Main user interface & canvas viewport
 ├── manifest.json            # PWA manifest
-├── sw.js                    # Service worker (Cache version v0.1.8)
+├── sw.js                    # Service worker (Cache version v0.1.11)
 ├── AGENTS.md                # Agent guidelines & version sync rules
 ├── README.md                # Project documentation & roadmap
 ├── css/
@@ -69,9 +69,9 @@ TCAD-WOKWI-Translator/
 
 ## 📋 Features & Roadmap Checklist
 
-- [x] **Project Foundation & Scaffolding** (`v0.1.0 to v0.1.8`)
+- [x] **Project Foundation & Scaffolding** (`v0.1.0 to v0.1.11`)
   - [x] Zero-dependency Vanilla HTML5/CSS3/ES6 architecture
-  - [x] Service Worker Network-First offline caching (`sw.js` `v0.1.8`)
+  - [x] Service Worker Network-First offline caching (`sw.js` `v0.1.11`)
   - [x] Markdown-based changelog engine (`doc/versions.md`)
   - [x] Technical architecture specification (`doc/DOCUMENTATION.md`)
   - [x] Interactive dark/sky-blue UI with SVG workspace
@@ -87,18 +87,30 @@ TCAD-WOKWI-Translator/
   - [x] Accurate Tinkercad Ventilador com sensor de presença e LCD translation with PIR sensor, DC motor, flyback diode, TIP120 power transistor, TMP36, 16x2 LCD (`v0.1.7`)
   - [x] Interactive canvas component drag-and-drop repositioning with dynamic wire re-routing (`v0.1.8`)
   - [x] Fluid canvas panning and mouse-wheel zoom navigation (`v0.1.8`)
+  - [x] Standalone HTML export graphic restoration with interactive pan/zoom viewer (`v0.1.9`)
+  - [x] Wokwi export modal dialog with 1-click clipboard copy, download, and simulator link (`v0.1.9`)
+  - [x] Intelligent breadboard tie-point snapping during drag operations (`v0.1.9`)
+  - [x] Logical breadboard connection synthesis for Wokwi simulation compilation (`v0.1.9`)
+  - [x] Authentic Tinkercad component aesthetics (bone-white breadboards, metallic leads, glass LEDs, ceramic resistors) (`v0.1.9`)
+  - [x] Header GitHub repository button linking to project source (`v0.1.9`)
+  - [x] Wokwi export modal TypeError fix with dedicated UI modal management (`v0.1.10`)
+  - [x] Clutter-free mobile top bar with bottom expanding Floating Action Menu (FAB) (`v0.1.10`)
+  - [x] Mobile touch tap-hold-and-drag optimization & multi-touch pinch-to-zoom (`v0.1.10`)
+  - [x] Mobile top bar GitHub, Docs, and Changelog button restoration (`v0.1.11`)
 - [ ] **Interactive Breadboard Workspace**
   - [x] Grid coordinate snapping math (0.1-inch pitch)
   - [x] 38 core components: Full/Half/Mini Breadboards, Arduino Uno/Mega/Nano, ESP32, PIR, Ultrasonic, DC/Servo Motors, Relay, Diodes, TIP120 Transistors, LCD, OLED, 7-Segment, 9V/AA Batteries, Logic ICs
   - [x] Exact pin terminal resolver & smart wire routing with Tinkercad floating pill badges (`v0.1.3` to `v0.1.7`)
   - [x] Interactive component movement inside canvas with live bezier wire updates (`v0.1.8`)
+  - [x] Breadboard tie-point snapping and logical net connection (`v0.1.9`)
   - [ ] Jumper wire interactive bezier curve routing with custom colors
   - [ ] Multi-select, rotate, and delete operations
 - [ ] **Translation & Import/Export Pipeline**
   - [x] Native circuit JSON schema definition
   - [x] Wokwi `diagram.json` compilation engine with canonical wire colors and chip identifiers
   - [x] Live Tinkercad public share link parser & JSON translator (`v0.1.1`, `v0.1.3`, `v0.1.4`, `v0.1.5`, `v0.1.6`, `v0.1.7`)
-  - [x] Universal standalone single-file `.html` export & re-import
+  - [x] Universal standalone single-file `.html` export & re-import (`v0.1.9`)
+  - [x] Dedicated Wokwi simulation export modal with instant clipboard copy (`v0.1.9`)
 
 
 
