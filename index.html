@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TCAD-WOKWI-Translator: Open-source client-side visual breadboard circuit viewer, editor, and bidirectional Tinkercad to Wokwi translator.">
+  <meta name="theme-color" content="#0284c7">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M25 50h50M50 25v50' stroke='%2338bdf8' stroke-width='10' stroke-linecap='round'/><circle cx='50' cy='50' r='12' fill='%230284c7'/></svg>">
+  <title>TCAD-WOKWI-Translator | Visual Circuit Editor & Translator</title>
+  <link rel="stylesheet" href="./css/style.css?v=0.1.8">
+
+
+
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <!-- Mobile Sidebar Toggle -->
+      <button id="btn-toggle-sidebar" class="btn btn-icon-only mobile-toggle" title="Toggle Components Catalog">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+      </button>
+
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h1 class="brand-title">
+          <span class="brand-full-name">TCAD-WOKWI</span>
+          <span class="brand-badge">v0.1.8</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Actions & Toolbar -->
+    <div class="toolbar-actions">
+      <!-- Import Tinkercad Button -->
+      <button id="btn-import-tcad" class="btn btn-primary" title="Import from Tinkercad Public Share Link or JSON">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="btn-text">Import TCAD</span>
+      </button>
+
+      <div class="btn-group">
+        <button id="btn-export-wokwi" class="btn btn-accent" title="Export Wokwi diagram.json">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          <span class="btn-text">Wokwi</span>
+        </button>
+
+        <button id="btn-export-html" class="btn btn-accent" title="Export Standalone Universal HTML Viewer">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          <span class="btn-text">HTML</span>
+        </button>
+
+        <button id="btn-export-json" class="btn" title="Download Raw Project JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <span class="btn-text">JSON</span>
+        </button>
+      </div>
+
+      <button id="btn-changelog" class="btn btn-accent" title="View Version History">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="btn-text">Changelog</span>
+      </button>
+
+      <a href="./doc/DOCUMENTATION.md" target="_blank" class="btn" title="Read Technical Documentation">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+        </svg>
+        <span class="btn-text">Docs</span>
+      </a>
+
+      <!-- Mobile Inspector Toggle -->
+      <button id="btn-toggle-inspector" class="btn btn-icon-only mobile-toggle" title="Toggle Code Inspector">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Persistent Quick Import Bar for Tinkercad Public Link -->
+  <section class="quick-import-bar" aria-label="Tinkercad Link Importer">
+    <div class="quick-import-inner">
+      <div class="quick-import-label">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+        <span class="import-label-text">Tinkercad Public Link:</span>
+      </div>
+      <div class="quick-import-input-wrapper">
+        <input 
+          type="url" 
+          id="quick-tcad-url-input" 
+          class="quick-import-input" 
+          placeholder="Paste public link: https://www.tinkercad.com/things/..."
+          aria-label="Tinkercad Public Share Link"
+        />
+        <button id="btn-quick-sample-url" class="btn btn-sm btn-accent" type="button" title="Load example Tinkercad link">
+          Sample
+        </button>
+        <button id="btn-quick-import-submit" class="btn btn-sm btn-primary" type="button" title="Import and translate circuit into JSON/Wokwi">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span class="btn-text">Translate & Load</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mobile Drawer Backdrop -->
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    <!-- Component Sidebar (Drawer on mobile) -->
+    <aside id="sidebar-palette" class="sidebar-palette">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Components Catalog (<span id="palette-count">38</span>)</div>
+        <button class="btn btn-icon-only close-drawer-btn" data-close-drawer="sidebar" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sidebar-search-wrapper">
+        <div class="search-input-box">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input 
+            type="text" 
+            id="component-search-input" 
+            class="sidebar-search-input" 
+            placeholder="Search 38 components..." 
+            aria-label="Search components"
+          />
+        </div>
+      </div>
+      <div id="component-list" class="component-list">
+        <!-- Dynamically rendered by UI.initComponentPalette() -->
+      </div>
+    </aside>
+
+    <!-- Visual Breadboard Canvas Workspace -->
+    <main class="canvas-viewport" id="canvas-container">
+      <svg id="circuit-canvas" class="canvas-svg"></svg>
+
+      <!-- Active Circuit Info Banner -->
+      <div id="circuit-banner" class="circuit-banner">
+        <span id="circuit-banner-title">Untitled Circuit</span>
+        <span id="circuit-banner-stats" class="circuit-banner-badge">2 components</span>
+      </div>
+
+      <!-- Floating Canvas Navigation Controls -->
+      <div class="viewport-controls">
+        <button id="btn-zoom-in" class="btn btn-icon-only" title="Zoom In">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+        <button id="btn-zoom-reset" class="btn btn-icon-only" title="Reset Zoom">
+          100%
+        </button>
+        <button id="btn-zoom-out" class="btn btn-icon-only" title="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </button>
+      </div>
+    </main>
+
+    <!-- Side Inspector & Live Translation Preview (Drawer on mobile) -->
+    <aside id="inspector-panel" class="inspector-panel">
+      <div class="inspector-header">
+        <div class="inspector-tabs">
+          <button id="tab-wokwi" class="tab-btn active">Wokwi diagram.json</button>
+          <button id="tab-native" class="tab-btn">Native Schema</button>
+        </div>
+        <button class="btn btn-icon-only close-drawer-btn" data-close-drawer="inspector" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="inspector-content">
+        <pre id="code-output" class="code-preview">Generating schema preview...</pre>
+      </div>
+    </aside>
+  </div>
+
+  <!-- TinkerCAD Import Modal -->
+  <div id="modal-import-tcad" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-import-tcad-title">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modal-import-tcad-title" class="modal-title">Import from Autodesk Tinkercad</h2>
+        <button class="btn btn-icon-only" data-close-modal title="Close dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle">Paste a public Tinkercad circuit share link or raw JSON payload below to translate it into the workspace.</p>
+        
+        <div class="form-group">
+          <label for="tcad-url-input" class="form-label">Tinkercad Public Share Link:</label>
+          <div class="input-with-action">
+            <input type="url" id="tcad-url-input" class="form-input" placeholder="https://www.tinkercad.com/things/7L66saKKSJ4-dld-lab-assignment?sharecode=...">
+            <button id="btn-load-sample-url" class="btn btn-accent btn-sm" type="button" title="Load example assignment link">
+              Sample
+            </button>
+          </div>
+          <span class="form-hint">Example: <code>https://www.tinkercad.com/things/7L66saKKSJ4-dld-lab-assignment?sharecode=uN3hDiqfdmBo2YvKn9dDltuocGkzMfPV7UJnA_uWMdk</code></span>
+        </div>
+
+        <details class="advanced-details">
+          <summary class="details-summary">Or paste raw circuit JSON payload</summary>
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <textarea id="tcad-json-input" class="form-textarea" rows="4" placeholder='{"components": [...], "connections": [...]}'></textarea>
+          </div>
+        </details>
+
+        <div id="tcad-import-status" class="import-status"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close-modal>Cancel</button>
+        <button id="btn-submit-tcad-import" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Import & Translate
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog Modal (powered by doc/versions.md) -->
+  <div id="modal-changelog" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-changelog-title">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modal-changelog-title" class="modal-title">Release Changelog & Version History</h2>
+        <button class="btn btn-icon-only" data-close-modal title="Close dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="changelog-body" class="modal-body">
+        <!-- Injected dynamically from doc/versions.md -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="./js/app.js?v=0.1.8"></script>
+</body>
+</html>
+
+
+
