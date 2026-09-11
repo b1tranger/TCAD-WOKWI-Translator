@@ -190,6 +190,20 @@ export const UI = {
         this.showToast('Sample Tinkercad URL loaded', 'info');
       });
     }
+
+    // Bind gallery preset chips
+    const sampleChips = document.querySelectorAll('.btn-sample-chip');
+    sampleChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const url = chip.dataset.url;
+        if (url && urlInput) {
+          urlInput.value = url;
+          const quickInput = document.getElementById('quick-tcad-url-input');
+          if (quickInput) quickInput.value = url;
+          this.showToast(`Loaded "${chip.textContent.trim()}" preset`, 'info', 2000);
+        }
+      });
+    });
   },
 
   /**

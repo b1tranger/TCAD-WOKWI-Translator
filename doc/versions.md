@@ -4,7 +4,23 @@ All notable changes to the **TCAD-WOKWI-Translator** project are documented in t
 
 ---
 
-## [v0.1.0 to v0.1.11] - 2026-09-11
+## [v0.1.0 to v0.1.12] - 2026-09-11
+
+### Universal Tinkercad Circuit Ingestion, Spatial Layout & Breadboard Snapping (v0.1.12)
+
+- **Universal Public Tinkercad Ingestion & Semantic Synthesizer**:
+  - Expanded `Translator.buildTinkercadTranslatedProject` to recognize 10+ standard Tinkercad gallery circuit families (Traffic Light Systems, HC-SR04 Ultrasonic Radar, Servo Angle Sweepers, LDR Night Lamps, 555 Timer Multivibrators, DC Motor Controllers, RGB LED Mixers, and Logic Gates).
+  - Built a fallback **Universal Dynamic Semantic Synthesizer** that tokenizes any arbitrary public circuit title or URL slug (e.g. buzzer, tilt sensor, motor, button, potentiometer, etc.), places the MCU on the left (`60, 100`), centers the half breadboard (`280, 110`), auto-snaps components to valid tie-points, and routes power and signal nets cleanly.
+- **Universal JSON Schema Normalizer (`Translator.fromTinkercad`)**:
+  - Ingests arbitrary raw JSON payloads from Autodesk Tinkercad, Wokwi, or custom circuit designers.
+  - Automatically handles string or parsed JSON inputs, converts millimeter coordinates to pixel workspace coordinates (`2.54mm -> 10px`), normalizes component aliases via `COMPONENT_ALIAS_MAP`, and auto-centers the circuit layout.
+- **Automatic Spatial Breadboard Snapping (`Translator.snapCoordinatesToBreadboard`)**:
+  - Detects if components overlap breadboard boundaries (`x, y, w, h`) and automatically snaps them into aligned tie-point rows/columns across half, full, and mini breadboard geometries.
+- **Import Modal Gallery Presets**:
+  - Added quick one-click preset chips in `#modal-import-tcad` (DLD Logic Lab, Lab 04 Boolean, Traffic Light, Ultrasonic Radar, Servo Sweep, LDR Night Light, 555 Timer) for instant gallery circuit translation and testing.
+- **Offline Cache & Release Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.12';`.
+  - Updated asset queries to `?v=0.1.12` and badge in `index.html`.
 
 ### Header GitHub, Docs & Changelog Restoration on Mobile (v0.1.11)
 

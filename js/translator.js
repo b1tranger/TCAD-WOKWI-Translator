@@ -5,7 +5,258 @@
 
 import { COMPONENT_CATALOG } from './schema.js';
 
+export const COMPONENT_ALIAS_MAP = {
+  // Microcontrollers
+  'arduino-uno': 'arduino-uno',
+  'arduino_uno': 'arduino-uno',
+  'uno': 'arduino-uno',
+  'arduino_uno_r3': 'arduino-uno',
+  'arduino uno': 'arduino-uno',
+  'arduino uno r3': 'arduino-uno',
+  'wokwi-arduino-uno': 'arduino-uno',
+  'arduino-mega': 'arduino-mega',
+  'arduino_mega': 'arduino-mega',
+  'mega': 'arduino-mega',
+  'arduino-nano': 'arduino-nano',
+  'arduino_nano': 'arduino-nano',
+  'nano': 'arduino-nano',
+  'esp32': 'esp32',
+  'wokwi-esp32-devkit-v1': 'esp32',
+  // Breadboards
+  'breadboard': 'breadboard-half',
+  'breadboard-half': 'breadboard-half',
+  'breadboard_half': 'breadboard-half',
+  'half-breadboard': 'breadboard-half',
+  'small-breadboard': 'breadboard-half',
+  'wokwi-breadboard-half': 'breadboard-half',
+  'breadboard-full': 'breadboard-full',
+  'breadboard_full': 'breadboard-full',
+  'full-breadboard': 'breadboard-full',
+  'wokwi-breadboard': 'breadboard-full',
+  'breadboard-mini': 'breadboard-mini',
+  'breadboard_mini': 'breadboard-mini',
+  'mini-breadboard': 'breadboard-mini',
+  'wokwi-breadboard-mini': 'breadboard-mini',
+  // Passives & Actuators
+  'resistor': 'resistor',
+  'res': 'resistor',
+  'r': 'resistor',
+  'wokwi-resistor': 'resistor',
+  'led': 'led',
+  'led-red': 'led',
+  'led-green': 'led',
+  'led-blue': 'led',
+  'led-yellow': 'led',
+  'wokwi-led': 'led',
+  'rgb-led': 'rgb-led',
+  'rgb_led': 'rgb-led',
+  'wokwi-rgb-led': 'rgb-led',
+  'capacitor': 'capacitor',
+  'cap': 'capacitor',
+  'diode': 'diode',
+  '1n4007': 'diode',
+  '1n4148': 'diode',
+  'transistor': 'transistor-tip120',
+  'transistor-tip120': 'transistor-tip120',
+  'tip120': 'transistor-tip120',
+  'bjt': 'transistor-tip120',
+  'npn': 'transistor-tip120',
+  'pushbutton': 'pushbutton',
+  'button': 'pushbutton',
+  'btn': 'pushbutton',
+  'tactile': 'pushbutton',
+  'wokwi-pushbutton': 'pushbutton',
+  'potentiometer': 'potentiometer',
+  'pot': 'potentiometer',
+  'trimmer': 'potentiometer',
+  'wokwi-potentiometer': 'potentiometer',
+  'photoresistor': 'photoresistor',
+  'ldr': 'photoresistor',
+  'light-sensor': 'photoresistor',
+  'wokwi-photoresistor-sensor': 'photoresistor',
+  'buzzer': 'buzzer',
+  'piezo': 'buzzer',
+  'speaker': 'buzzer',
+  'wokwi-buzzer': 'buzzer',
+  'servo': 'servo',
+  'servo-motor': 'servo',
+  'micro-servo': 'servo',
+  'sg90': 'servo',
+  'wokwi-servo': 'servo',
+  'dc-motor': 'dc-motor',
+  'motor': 'dc-motor',
+  'relay': 'relay',
+  'relay-spdt': 'relay',
+  'sensor-tmp36': 'sensor-tmp36',
+  'tmp36': 'sensor-tmp36',
+  'temperature-sensor': 'sensor-tmp36',
+  'temp-sensor': 'sensor-tmp36',
+  'pir-sensor': 'pir-sensor',
+  'pir': 'pir-sensor',
+  'motion-sensor': 'pir-sensor',
+  'ultrasonic-hcsr04': 'ultrasonic-hcsr04',
+  'hcsr04': 'ultrasonic-hcsr04',
+  'ultrasonic': 'ultrasonic-hcsr04',
+  'sonar': 'ultrasonic-hcsr04',
+  'wokwi-hc-sr04': 'ultrasonic-hcsr04',
+  'power-supply': 'power-supply',
+  'battery-9v': 'battery-9v',
+  'battery-aa-4': 'battery-aa-4',
+  'dip-switch-4': 'dip-switch-4',
+  'slide-switch': 'slide-switch',
+  'multimeter': 'multimeter',
+  'lcd1602-i2c': 'lcd1602-i2c',
+  'lcd1602': 'lcd1602-i2c',
+  'lcd': 'lcd1602-i2c',
+  'wokwi-lcd1602': 'lcd1602-i2c',
+  '7segment': '7segment',
+  'seven-segment': '7segment',
+  'wokwi-7segment': '7segment',
+  'oled-ssd1306': 'oled-ssd1306',
+  'oled': 'oled-ssd1306',
+  // Chips / ICs
+  'chip-74hc32': 'chip-74hc32',
+  '74hc32': 'chip-74hc32',
+  '7432': 'chip-74hc32',
+  'chip-74hc04': 'chip-74hc04',
+  '74hc04': 'chip-74hc04',
+  '7404': 'chip-74hc04',
+  'chip-7408': 'chip-7408',
+  '74hc08': 'chip-7408',
+  '7408': 'chip-7408',
+  'chip-7400': 'chip-7400',
+  '74hc00': 'chip-7400',
+  '7400': 'chip-7400',
+  'chip-555': 'chip-555',
+  'ne555': 'chip-555',
+  '555': 'chip-555',
+  'dip-ic': 'dip-ic'
+};
+
+
 export const Translator = {
+
+  /**
+   * Normalizes any raw component type, alias, or human name to a valid schema type
+   */
+  normalizeComponentType(rawType) {
+    if (!rawType) return 'generic-component';
+    const clean = String(rawType)
+      .toLowerCase()
+      .replace(/^(wokwi|tcad|part)[-_]/, '')
+      .trim();
+    if (COMPONENT_ALIAS_MAP[clean]) return COMPONENT_ALIAS_MAP[clean];
+    if (COMPONENT_CATALOG[clean]) return clean;
+
+    // Substring heuristical matching
+    if (clean.includes('uno')) return 'arduino-uno';
+    if (clean.includes('mega')) return 'arduino-mega';
+    if (clean.includes('nano')) return 'arduino-nano';
+    if (clean.includes('esp32')) return 'esp32';
+    if (clean.includes('breadboard')) {
+      if (clean.includes('full')) return 'breadboard-full';
+      if (clean.includes('mini')) return 'breadboard-mini';
+      return 'breadboard-half';
+    }
+    if (clean.includes('resistor') || clean === 'res' || clean === 'r') return 'resistor';
+    if (clean.includes('rgb')) return 'rgb-led';
+    if (clean.includes('led')) return 'led';
+    if (clean.includes('pot')) return 'potentiometer';
+    if (clean.includes('servo')) return 'servo';
+    if (clean.includes('motor')) return 'dc-motor';
+    if (clean.includes('ultrasonic') || clean.includes('hcsr04')) return 'ultrasonic-hcsr04';
+    if (clean.includes('pir')) return 'pir-sensor';
+    if (clean.includes('tmp36') || clean.includes('temp')) return 'sensor-tmp36';
+    if (clean.includes('photo') || clean.includes('ldr')) return 'photoresistor';
+    if (clean.includes('button') || clean.includes('switch')) return clean.includes('slide') ? 'slide-switch' : clean.includes('dip') ? 'dip-switch-4' : 'pushbutton';
+    if (clean.includes('buzzer') || clean.includes('piezo')) return 'buzzer';
+    if (clean.includes('lcd')) return 'lcd1602-i2c';
+    if (clean.includes('7segment') || clean.includes('seven')) return '7segment';
+    if (clean.includes('oled')) return 'oled-ssd1306';
+    if (clean.includes('555')) return 'chip-555';
+    if (clean.includes('7432')) return 'chip-74hc32';
+    if (clean.includes('7404')) return 'chip-74hc04';
+    if (clean.includes('7408')) return 'chip-7408';
+    if (clean.includes('7400')) return 'chip-7400';
+    if (clean.includes('battery')) return clean.includes('9v') ? 'battery-9v' : 'battery-aa-4';
+
+    return 'generic-component';
+  },
+
+  /**
+   * Snaps a component directly to breadboard holes if overlapping
+   */
+  snapCoordinatesToBreadboard(comp, rawX, rawY, bb) {
+    if (!bb || comp.type.startsWith('breadboard')) {
+      return { x: rawX, y: rawY, isSnapped: false };
+    }
+
+    const bbWidth = bb.type === 'breadboard-full' ? 680 : bb.type === 'breadboard-mini' ? 240 : 560;
+    const bbHeight = 252;
+    const colPitch = bb.type === 'breadboard-full' ? 10 : bb.type === 'breadboard-mini' ? 11 : 17.5;
+    const startX = bb.type === 'breadboard-full' ? 22 : bb.type === 'breadboard-mini' ? 20 : 28;
+    const maxCols = bb.type === 'breadboard-full' ? 63 : bb.type === 'breadboard-mini' ? 17 : 30;
+
+    if (
+      rawX >= bb.x - 40 &&
+      rawX <= bb.x + bbWidth - 10 &&
+      rawY >= bb.y - 30 &&
+      rawY <= bb.y + bbHeight - 10
+    ) {
+      if (comp.type.startsWith('chip-') || comp.type === 'dip-ic') {
+        const targetCol = Math.round((rawX + 18 - (bb.x + startX)) / colPitch) + 1;
+        const clampedCol = Math.max(1, Math.min(maxCols - 6, targetCol));
+        const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 18);
+        const snappedY = Math.round(bb.y + 70);
+        return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+      }
+
+      if (comp.type === 'resistor') {
+        if (comp.rotation === 90) {
+          const targetCol = Math.round((rawX + 12 - (bb.x + startX)) / colPitch) + 1;
+          const clampedCol = Math.max(1, Math.min(maxCols, targetCol));
+          const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 12);
+          const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+          const targetRowY = Math.round((rawY + 4 - rowBase) / 11) * 11 + rowBase;
+          const snappedY = Math.round(targetRowY - 4);
+          return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+        } else {
+          const targetCol = Math.round((rawX + 4 - (bb.x + startX)) / colPitch) + 1;
+          const clampedCol = Math.max(1, Math.min(maxCols - 3, targetCol));
+          const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 4);
+          const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+          const targetRowY = Math.round((rawY + 12 - rowBase) / 11) * 11 + rowBase;
+          const snappedY = Math.round(targetRowY - 12);
+          return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+        }
+      }
+
+      if (comp.type === 'led') {
+        const targetCol = Math.round((rawX + 10 - (bb.x + startX)) / colPitch) + 1;
+        const clampedCol = Math.max(1, Math.min(maxCols - 1, targetCol));
+        const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 10);
+        const rowBase = rawY < bb.y + 118 ? bb.y + 64 : bb.y + 138;
+        const targetRowY = Math.round((rawY + 38 - rowBase) / 11) * 11 + rowBase;
+        const snappedY = Math.round(targetRowY - 38);
+        return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+      }
+
+      if (comp.type === 'pushbutton') {
+        const targetCol = Math.round((rawX + 8 - (bb.x + startX)) / colPitch) + 1;
+        const clampedCol = Math.max(1, Math.min(maxCols - 1, targetCol));
+        const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 8);
+        const snappedY = Math.round(bb.y + 98);
+        return { x: snappedX, y: snappedY, isSnapped: true, bbId: bb.id, col: clampedCol };
+      }
+
+      const targetCol = Math.round((rawX + 20 - (bb.x + startX)) / colPitch) + 1;
+      const clampedCol = Math.max(1, Math.min(maxCols, targetCol));
+      const snappedX = Math.round(bb.x + startX + (clampedCol - 1) * colPitch - 20);
+      return { x: snappedX, y: rawY, isSnapped: true, bbId: bb.id, col: clampedCol };
+    }
+
+    return { x: rawX, y: rawY, isSnapped: false };
+  },
   /**
     * Convert Native Project Schema to Wokwi diagram.json
    */
@@ -319,8 +570,19 @@ export const Translator = {
    * Constructs translated Native Circuit based on Tinkercad metadata
    */
   buildTinkercadTranslatedProject(urlInfo, pageTitle) {
+    if (typeof urlInfo === 'string') {
+      const parsed = this.parseTinkercadUrl(urlInfo);
+      if (parsed.valid) {
+        urlInfo = parsed;
+      } else {
+        urlInfo = { slug: urlInfo, title: pageTitle || urlInfo, thingId: '' };
+      }
+    } else if (!urlInfo) {
+      urlInfo = { slug: '', title: pageTitle || '', thingId: '' };
+    }
+
     const slug = (urlInfo.slug || '').toLowerCase();
-    const title = (pageTitle || '').toLowerCase();
+    const title = (pageTitle || urlInfo.title || '').toLowerCase();
     const thingId = (urlInfo.thingId || '').toLowerCase();
 
     // 1. Detect Lab 04 / Boolean Logic (74HC32 OR gate + 74HC04 NOT gate + DIP Switch + Bench Power Supply)
@@ -1270,67 +1532,270 @@ export const Translator = {
           bends: []
         }
       );
-    } else {
-      // General Arduino + Breadboard setup
+    } else if (/traffic|semaforo|ampel|feux/i.test(slug) || /traffic.*light/i.test(title)) {
+      // Traffic Light Controller (Red, Yellow, Green LEDs with Current-Limiting Resistors)
       components.push(
-        {
-          id: 'arduino_uno',
-          type: 'arduino-uno',
-          x: 60,
-          y: 120,
-          rotation: 0,
-          properties: {}
-        },
-        {
-          id: 'res_limit',
-          type: 'resistor',
-          x: 480,
-          y: 160,
-          rotation: 0,
-          properties: { resistance: '220' }
-        },
-        {
-          id: 'led_stat',
-          type: 'led',
-          x: 580,
-          y: 155,
-          rotation: 0,
-          properties: { color: 'red' }
-        }
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'led_red', type: 'led', x: 520, y: 95, rotation: 0, properties: { color: 'red', label: 'Red Light' } },
+        { id: 'led_yellow', type: 'led', x: 605, y: 95, rotation: 0, properties: { color: 'yellow', label: 'Yellow Light' } },
+        { id: 'led_green', type: 'led', x: 690, y: 95, rotation: 0, properties: { color: 'green', label: 'Green Light' } },
+        { id: 'res_red', type: 'resistor', x: 520, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+        { id: 'res_yellow', type: 'resistor', x: 605, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+        { id: 'res_green', type: 'resistor', x: 690, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } }
+      );
+      connections.push(
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_sig_red', from: { component: 'arduino_uno', pin: '13' }, to: { component: 'led_red', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_sig_yellow', from: { component: 'arduino_uno', pin: '12' }, to: { component: 'led_yellow', pin: 'a' }, color: '#eab308', bends: [] },
+        { id: 'w_sig_green', from: { component: 'arduino_uno', pin: '11' }, to: { component: 'led_green', pin: 'a' }, color: '#10b981', bends: [] },
+        { id: 'w_r_red_gnd', from: { component: 'res_red', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_5' }, color: '#0f172a', bends: [] },
+        { id: 'w_r_yel_gnd', from: { component: 'res_yellow', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_10' }, color: '#0f172a', bends: [] },
+        { id: 'w_r_grn_gnd', from: { component: 'res_green', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] }
+      );
+    } else if (/ultrasonic|distance|hcsr04|hc-sr04|radar|sonar/i.test(slug) || /ultrasonic|distance|radar/i.test(title)) {
+      // Ultrasonic Distance / Obstacle Detector System
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'sensor_sonar', type: 'ultrasonic-hcsr04', x: 480, y: 30, rotation: 0, properties: { label: 'HC-SR04 Ultrasonic' } },
+        { id: 'buzzer_alert', type: 'buzzer', x: 640, y: 200, rotation: 0, properties: { label: 'Piezo Alarm' } },
+        { id: 'led_dist', type: 'led', x: 570, y: 130, rotation: 0, properties: { color: 'red', label: 'Proximity Warning' } },
+        { id: 'res_dist', type: 'resistor', x: 570, y: 175, rotation: 90, properties: { resistance: '220', label: '220Ω' } }
+      );
+      connections.push(
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'sensor_sonar', pin: 'VCC' }, color: '#ef4444', bends: [] },
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'sensor_sonar', pin: 'GND' }, color: '#0f172a', bends: [] },
+        { id: 'w_trig', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'sensor_sonar', pin: 'TRIG' }, color: '#0284c7', bends: [] },
+        { id: 'w_echo', from: { component: 'arduino_uno', pin: '10' }, to: { component: 'sensor_sonar', pin: 'ECHO' }, color: '#eab308', bends: [] },
+        { id: 'w_buzz_pos', from: { component: 'arduino_uno', pin: '8' }, to: { component: 'buzzer_alert', pin: '1' }, color: '#f97316', bends: [] },
+        { id: 'w_buzz_neg', from: { component: 'buzzer_alert', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_20' }, color: '#0f172a', bends: [] },
+        { id: 'w_led_sig', from: { component: 'arduino_uno', pin: '13' }, to: { component: 'led_dist', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_led_res', from: { component: 'led_dist', pin: 'c' }, to: { component: 'res_dist', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_res_gnd', from: { component: 'res_dist', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] }
+      );
+    } else if (/servo|sg90|sweep/i.test(slug) || /servo/i.test(title)) {
+      // Servo Motor Angle / Sweep Controller
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'servo_motor', type: 'servo', x: 790, y: 130, rotation: 0, properties: { label: 'Micro Servo SG90' } },
+        { id: 'pot_angle', type: 'potentiometer', x: 500, y: 135, rotation: 0, properties: { label: '10kΩ Potentiometer', resistance: '10k' } }
+      );
+      connections.push(
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'top_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_servo_sig', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'servo_motor', pin: 'PWM' }, color: '#f97316', bends: [] },
+        { id: 'w_servo_pwr', from: { component: 'bb_main', pin: 'top_rail_pos_25' }, to: { component: 'servo_motor', pin: 'V+' }, color: '#ef4444', bends: [] },
+        { id: 'w_servo_gnd', from: { component: 'bb_main', pin: 'top_rail_neg_25' }, to: { component: 'servo_motor', pin: 'GND' }, color: '#0f172a', bends: [] },
+        { id: 'w_pot_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_5' }, to: { component: 'pot_angle', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_pot_sig', from: { component: 'pot_angle', pin: '2' }, to: { component: 'arduino_uno', pin: 'A0' }, color: '#0284c7', bends: [] },
+        { id: 'w_pot_gnd', from: { component: 'bb_main', pin: 'top_rail_neg_5' }, to: { component: 'pot_angle', pin: '3' }, color: '#0f172a', bends: [] }
+      );
+    } else if (/ldr|photoresistor|night-light|street-light|smart-light|light-sensor/i.test(slug) || /night.*light|ldr|photoresistor/i.test(title)) {
+      // Smart Street Light / LDR Night Light
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'sensor_ldr', type: 'photoresistor', x: 490, y: 130, rotation: 0, properties: { label: 'Photoresistor (LDR)' } },
+        { id: 'res_div', type: 'resistor', x: 490, y: 175, rotation: 90, properties: { resistance: '10k', label: '10kΩ' } },
+        { id: 'led_lamp', type: 'led', x: 650, y: 130, rotation: 0, properties: { color: 'yellow', label: 'Street Lamp' } },
+        { id: 'res_lamp', type: 'resistor', x: 650, y: 175, rotation: 90, properties: { resistance: '220', label: '220Ω' } }
+      );
+      connections.push(
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_ldr_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_5' }, to: { component: 'sensor_ldr', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_ldr_node', from: { component: 'sensor_ldr', pin: '2' }, to: { component: 'res_div', pin: '1' }, color: '#0284c7', bends: [] },
+        { id: 'w_ldr_a0', from: { component: 'sensor_ldr', pin: '2' }, to: { component: 'arduino_uno', pin: 'A0' }, color: '#0284c7', bends: [] },
+        { id: 'w_div_gnd', from: { component: 'res_div', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_5' }, color: '#0f172a', bends: [] },
+        { id: 'w_lamp_sig', from: { component: 'arduino_uno', pin: '13' }, to: { component: 'led_lamp', pin: 'a' }, color: '#eab308', bends: [] },
+        { id: 'w_lamp_res', from: { component: 'led_lamp', pin: 'c' }, to: { component: 'res_lamp', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_lamp_gnd', from: { component: 'res_lamp', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] }
+      );
+    } else if (/dc-motor|motor-speed|fan/i.test(slug) || /dc.*motor|motor.*speed/i.test(title)) {
+      // DC Motor Driver / Fan Speed Controller
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'dc_motor', type: 'dc-motor', x: 800, y: 130, rotation: 0, properties: { label: 'DC Motor' } },
+        { id: 'bjt_tip120', type: 'transistor-tip120', x: 570, y: 130, rotation: 0, properties: { label: 'TIP120 NPN Darlington' } },
+        { id: 'diode_flyback', type: 'diode', x: 640, y: 130, rotation: 0, properties: { label: '1N4007 Flyback Diode' } },
+        { id: 'res_base', type: 'resistor', x: 520, y: 140, rotation: 0, properties: { resistance: '1k', label: '1kΩ' } },
+        { id: 'pot_speed', type: 'potentiometer', x: 450, y: 180, rotation: 0, properties: { label: 'Speed Dial', resistance: '10k' } }
+      );
+      connections.push(
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_pot_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_2' }, to: { component: 'pot_speed', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_pot_sig', from: { component: 'pot_speed', pin: '2' }, to: { component: 'arduino_uno', pin: 'A0' }, color: '#0284c7', bends: [] },
+        { id: 'w_pot_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_2' }, to: { component: 'pot_speed', pin: '3' }, color: '#0f172a', bends: [] },
+        { id: 'w_pwm_out', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'res_base', pin: '1' }, color: '#f97316', bends: [] },
+        { id: 'w_base_in', from: { component: 'res_base', pin: '2' }, to: { component: 'bjt_tip120', pin: 'base' }, color: '#f97316', bends: [] },
+        { id: 'w_emitter_gnd', from: { component: 'bjt_tip120', pin: 'emitter' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_10' }, color: '#0f172a', bends: [] },
+        { id: 'w_motor_pos', from: { component: 'bb_main', pin: 'top_rail_pos_20' }, to: { component: 'dc_motor', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_motor_neg', from: { component: 'dc_motor', pin: '2' }, to: { component: 'bjt_tip120', pin: 'collector' }, color: '#0284c7', bends: [] },
+        { id: 'w_diode_cath', from: { component: 'diode_flyback', pin: 'cathode' }, to: { component: 'dc_motor', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_diode_anode', from: { component: 'diode_flyback', pin: 'anode' }, to: { component: 'dc_motor', pin: '2' }, color: '#0284c7', bends: [] }
+      );
+    } else if (/555|ne555|astable|monostable|flasher|oscillator/i.test(slug) || /555.*timer/i.test(title)) {
+      // NE555 Timer Astable Multivibrator / Blinker
+      components.push(
+        { id: 'batt_9v', type: 'battery-9v', x: 80, y: 120, rotation: 0, properties: { label: '9V Battery' } },
+        { id: 'ic_ne555', type: 'chip-555', x: 500, y: 180, rotation: 0, properties: { label: 'NE555 Timer' } },
+        { id: 'cap_timing', type: 'capacitor', x: 440, y: 150, rotation: 0, properties: { capacitance: '10uF', label: '10µF' } },
+        { id: 'res_ra', type: 'resistor', x: 470, y: 130, rotation: 0, properties: { resistance: '10k', label: '10kΩ R1' } },
+        { id: 'res_rb', type: 'resistor', x: 560, y: 130, rotation: 0, properties: { resistance: '100k', label: '100kΩ R2' } },
+        { id: 'led_out', type: 'led', x: 650, y: 130, rotation: 0, properties: { color: 'red', label: 'Output Flash' } },
+        { id: 'res_led', type: 'resistor', x: 650, y: 175, rotation: 90, properties: { resistance: '470', label: '470Ω' } }
+      );
+      connections.push(
+        { id: 'w_batt_pos', from: { component: 'batt_9v', pin: 'pos' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_batt_neg', from: { component: 'batt_9v', pin: 'neg' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_555_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_10' }, to: { component: 'ic_ne555', pin: '8' }, color: '#ef4444', bends: [] },
+        { id: 'w_555_rst', from: { component: 'bb_main', pin: 'top_rail_pos_10' }, to: { component: 'ic_ne555', pin: '4' }, color: '#ef4444', bends: [] },
+        { id: 'w_555_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_10' }, to: { component: 'ic_ne555', pin: '1' }, color: '#0f172a', bends: [] },
+        { id: 'w_555_out', from: { component: 'ic_ne555', pin: '3' }, to: { component: 'led_out', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_led_res', from: { component: 'led_out', pin: 'c' }, to: { component: 'res_led', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_res_gnd', from: { component: 'res_led', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] }
+      );
+    } else if (/rgb|color-mixer|rainbow/i.test(slug) || /rgb.*led/i.test(title)) {
+      // RGB LED Multi-Color Mixer
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'rgb_light', type: 'rgb-led', x: 620, y: 120, rotation: 0, properties: { label: 'RGB LED' } },
+        { id: 'pot_r', type: 'potentiometer', x: 450, y: 170, rotation: 0, properties: { label: 'Red Level', resistance: '10k' } },
+        { id: 'pot_g', type: 'potentiometer', x: 540, y: 170, rotation: 0, properties: { label: 'Green Level', resistance: '10k' } },
+        { id: 'pot_b', type: 'potentiometer', x: 700, y: 170, rotation: 0, properties: { label: 'Blue Level', resistance: '10k' } }
+      );
+      connections.push(
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_rgb_r', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'rgb_light', pin: 'R' }, color: '#ef4444', bends: [] },
+        { id: 'w_rgb_g', from: { component: 'arduino_uno', pin: '10' }, to: { component: 'rgb_light', pin: 'G' }, color: '#10b981', bends: [] },
+        { id: 'w_rgb_b', from: { component: 'arduino_uno', pin: '11' }, to: { component: 'rgb_light', pin: 'B' }, color: '#0284c7', bends: [] },
+        { id: 'w_rgb_cat', from: { component: 'rgb_light', pin: 'C' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] },
+        { id: 'w_pot_r_sig', from: { component: 'pot_r', pin: '2' }, to: { component: 'arduino_uno', pin: 'A0' }, color: '#ef4444', bends: [] },
+        { id: 'w_pot_g_sig', from: { component: 'pot_g', pin: '2' }, to: { component: 'arduino_uno', pin: 'A1' }, color: '#10b981', bends: [] },
+        { id: 'w_pot_b_sig', from: { component: 'pot_b', pin: '2' }, to: { component: 'arduino_uno', pin: 'A2' }, color: '#0284c7', bends: [] }
+      );
+    } else {
+      // UNIVERSAL DYNAMIC SEMANTIC SYNTHESIZER
+      // Extracts any recognized components from URL slug, title, and keywords, arranging them faithfully
+      components.push({
+        id: 'arduino_uno',
+        type: 'arduino-uno',
+        x: 60,
+        y: 100,
+        rotation: 0,
+        properties: { label: 'Arduino Uno' }
+      });
+
+      // Always connect Arduino power to breadboard rails
+      connections.push(
+        { id: 'w_pwr_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_pwr_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] }
       );
 
-      connections.push(
-        {
-          id: 'wire_5v',
-          from: { component: 'arduino_uno', pin: '5V' },
-          to: { component: 'bb_main', pin: 'top_rail_pos' },
-          color: '#ef4444',
-          bends: []
-        },
-        {
-          id: 'wire_gnd',
-          from: { component: 'arduino_uno', pin: 'GND.1' },
-          to: { component: 'bb_main', pin: 'bottom_rail_neg' },
-          color: '#0284c7',
-          bends: []
-        },
-        {
-          id: 'wire_sig',
-          from: { component: 'arduino_uno', pin: '13' },
-          to: { component: 'res_limit', pin: '1' },
-          color: '#f59e0b',
-          bends: []
-        },
-        {
-          id: 'wire_led',
-          from: { component: 'res_limit', pin: '2' },
-          to: { component: 'led_stat', pin: 'anode' },
-          color: '#10b981',
-          bends: []
-        }
-      );
+      const allTokens = (slug + ' ' + title + ' ' + thingId).toLowerCase();
+      let colCursor = 5;
+      let pinCursor = 13;
+
+      if (/ultrasonic|sonar|distance/.test(allTokens)) {
+        components.push({ id: 'sensor_us', type: 'ultrasonic-hcsr04', x: 480, y: 30, rotation: 0, properties: { label: 'HC-SR04' } });
+        connections.push(
+          { id: 'w_us_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_5' }, to: { component: 'sensor_us', pin: 'VCC' }, color: '#ef4444', bends: [] },
+          { id: 'w_us_trig', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'sensor_us', pin: 'TRIG' }, color: '#0284c7', bends: [] },
+          { id: 'w_us_echo', from: { component: 'arduino_uno', pin: '10' }, to: { component: 'sensor_us', pin: 'ECHO' }, color: '#eab308', bends: [] },
+          { id: 'w_us_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_5' }, to: { component: 'sensor_us', pin: 'GND' }, color: '#0f172a', bends: [] }
+        );
+      }
+
+      if (/servo/.test(allTokens)) {
+        components.push({ id: 'servo_dyn', type: 'servo', x: 790, y: 130, rotation: 0, properties: { label: 'Servo Motor' } });
+        connections.push(
+          { id: 'w_srv_sig', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'servo_dyn', pin: 'PWM' }, color: '#f97316', bends: [] },
+          { id: 'w_srv_pwr', from: { component: 'bb_main', pin: 'top_rail_pos_25' }, to: { component: 'servo_dyn', pin: 'V+' }, color: '#ef4444', bends: [] },
+          { id: 'w_srv_gnd', from: { component: 'bb_main', pin: 'top_rail_neg_25' }, to: { component: 'servo_dyn', pin: 'GND' }, color: '#0f172a', bends: [] }
+        );
+      }
+
+      if (/buzzer|piezo|speaker|sound|tone/.test(allTokens)) {
+        components.push({ id: 'piezo_dyn', type: 'buzzer', x: 440 + (colCursor * 17.5), y: 190, rotation: 0, properties: { label: 'Buzzer' } });
+        connections.push(
+          { id: 'w_bz_sig', from: { component: 'arduino_uno', pin: '8' }, to: { component: 'piezo_dyn', pin: '1' }, color: '#f97316', bends: [] },
+          { id: 'w_bz_gnd', from: { component: 'piezo_dyn', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_' + colCursor }, color: '#0f172a', bends: [] }
+        );
+        colCursor += 5;
+      }
+
+      if (/button|switch|push/.test(allTokens)) {
+        components.push({ id: 'btn_dyn', type: 'pushbutton', x: 440 + (colCursor * 17.5), y: 160, rotation: 0, properties: { label: 'Pushbutton' } });
+        connections.push(
+          { id: 'w_btn_sig', from: { component: 'arduino_uno', pin: '2' }, to: { component: 'btn_dyn', pin: '1a' }, color: '#0284c7', bends: [] },
+          { id: 'w_btn_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_' + colCursor }, to: { component: 'btn_dyn', pin: '2a' }, color: '#ef4444', bends: [] }
+        );
+        colCursor += 4;
+      }
+
+      if (/pot|potentiometer/.test(allTokens)) {
+        components.push({ id: 'pot_dyn', type: 'potentiometer', x: 440 + (colCursor * 17.5), y: 165, rotation: 0, properties: { label: 'Potentiometer', resistance: '10k' } });
+        connections.push(
+          { id: 'w_pot_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_' + colCursor }, to: { component: 'pot_dyn', pin: '1' }, color: '#ef4444', bends: [] },
+          { id: 'w_pot_sig', from: { component: 'pot_dyn', pin: '2' }, to: { component: 'arduino_uno', pin: 'A0' }, color: '#0284c7', bends: [] },
+          { id: 'w_pot_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_' + colCursor }, to: { component: 'pot_dyn', pin: '3' }, color: '#0f172a', bends: [] }
+        );
+        colCursor += 5;
+      }
+
+      if (/lcd|screen|display/.test(allTokens)) {
+        components.push({ id: 'lcd_dyn', type: 'lcd1602-i2c', x: 790, y: 220, rotation: 0, properties: { label: '16x2 I2C LCD' } });
+        connections.push(
+          { id: 'w_lcd_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_20' }, to: { component: 'lcd_dyn', pin: 'VCC' }, color: '#ef4444', bends: [] },
+          { id: 'w_lcd_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_20' }, to: { component: 'lcd_dyn', pin: 'GND' }, color: '#0f172a', bends: [] },
+          { id: 'w_lcd_sda', from: { component: 'arduino_uno', pin: 'A4' }, to: { component: 'lcd_dyn', pin: 'SDA' }, color: '#0284c7', bends: [] },
+          { id: 'w_lcd_scl', from: { component: 'arduino_uno', pin: 'A5' }, to: { component: 'lcd_dyn', pin: 'SCL' }, color: '#eab308', bends: [] }
+        );
+      }
+
+      // Default or extracted LEDs + Current limiting resistors
+      const ledColors = [];
+      if (/red/.test(allTokens)) ledColors.push('red');
+      if (/green/.test(allTokens)) ledColors.push('green');
+      if (/yellow/.test(allTokens)) ledColors.push('yellow');
+      if (/blue/.test(allTokens)) ledColors.push('blue');
+      if (ledColors.length === 0) ledColors.push('red');
+
+      ledColors.forEach((clr, i) => {
+        if (colCursor > 25) return;
+        const ledId = 'led_' + clr + '_' + (i + 1);
+        const resId = 'res_' + clr + '_' + (i + 1);
+        const pinNum = Math.max(2, pinCursor - i);
+        const col = colCursor;
+
+        components.push(
+          { id: ledId, type: 'led', x: 440 + (col * 17.5), y: 130, rotation: 0, properties: { color: clr, label: clr.toUpperCase() + ' LED' } },
+          { id: resId, type: 'resistor', x: 440 + (col * 17.5), y: 175, rotation: 90, properties: { resistance: '220', label: '220Ω' } }
+        );
+
+        connections.push(
+          { id: 'w_led_sig_' + i, from: { component: 'arduino_uno', pin: String(pinNum) }, to: { component: ledId, pin: 'a' }, color: clr === 'red' ? '#ef4444' : clr === 'green' ? '#10b981' : clr === 'yellow' ? '#eab308' : '#0284c7', bends: [] },
+          { id: 'w_led_res_' + i, from: { component: ledId, pin: 'c' }, to: { component: resId, pin: '1' }, color: '#10b981', bends: [] },
+          { id: 'w_res_gnd_' + i, from: { component: resId, pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_' + col }, color: '#0f172a', bends: [] }
+        );
+
+        colCursor += 4;
+      });
     }
 
+    // Auto-snap all components placed over or near breadboard to tie points
+    const breadboard = components.find(c => c.type.startsWith('breadboard'));
+    if (breadboard) {
+      components.forEach((c) => {
+        if (c.type.startsWith('breadboard')) return;
+        const snapped = this.snapCoordinatesToBreadboard(c, c.x, c.y, breadboard);
+        if (snapped.isSnapped) {
+          c.x = snapped.x;
+          c.y = snapped.y;
+        }
+      });
+    }
 
     return {
       metadata: {
@@ -1350,31 +1815,138 @@ export const Translator = {
   },
 
   /**
-   * Parse Tinkercad circuit payload into Native Schema
+   * Universal JSON Normalizer: parses any arbitrary Tinkercad or external circuit schema
    */
-  fromTinkercad(tinkercadData) {
-    const project = {
+  fromTinkercad(rawPayload) {
+    if (typeof rawPayload === 'string') {
+      try {
+        rawPayload = JSON.parse(rawPayload);
+      } catch (err) {
+        throw new Error('Invalid circuit payload: malformed JSON string.');
+      }
+    }
+    if (!rawPayload || typeof rawPayload !== 'object') {
+      throw new Error('Invalid circuit payload: expected an object.');
+    }
+
+    // 1. If payload is already Wokwi diagram.json
+    if (Array.isArray(rawPayload.parts)) {
+      return this.fromWokwi(rawPayload);
+    }
+
+    const title = rawPayload.name || rawPayload.title || rawPayload.metadata?.title || 'Imported Tinkercad Circuit';
+    const author = rawPayload.author || rawPayload.metadata?.author || 'Tinkercad User';
+
+    const rawComps = rawPayload.components || rawPayload.parts || rawPayload.elements || rawPayload.devices || rawPayload.schematic?.components || [];
+    const rawConns = rawPayload.connections || rawPayload.wires || rawPayload.nets || rawPayload.signals || [];
+
+    const components = rawComps.map((rawComp, idx) => {
+      const rawType = rawComp.type || rawComp.name || rawComp.part || 'generic-component';
+      const normType = this.normalizeComponentType(rawType);
+
+      let x = Number(rawComp.x ?? rawComp.left ?? rawComp.pos?.[0] ?? rawComp.position?.x ?? 0);
+      let y = Number(rawComp.y ?? rawComp.top ?? rawComp.pos?.[1] ?? rawComp.position?.y ?? 0);
+
+      // Detect if units are mm (typical bounding box < 100) and scale to px
+      if (Math.abs(x) < 200 && Math.abs(y) < 150 && (rawComp.unit === 'mm' || rawComp.mm === true)) {
+        x = Math.round(x * 3.78);
+        y = Math.round(y * 3.78);
+      }
+
+      const rotation = Number(rawComp.rotation ?? rawComp.rotate ?? rawComp.angle ?? 0);
+      const id = String(rawComp.id || (normType + '_' + (idx + 1)));
+
+      return {
+        id,
+        type: normType,
+        x: Math.round(x),
+        y: Math.round(y),
+        rotation,
+        properties: { ...(rawComp.properties || rawComp.attrs || rawComp.attributes || {}) }
+      };
+    });
+
+    // Auto-center and normalize layout coordinates if they are offset strangely
+    if (components.length > 0) {
+      let minX = Infinity, minY = Infinity;
+      components.forEach((c) => {
+        if (c.x < minX) minX = c.x;
+        if (c.y < minY) minY = c.y;
+      });
+      if (minX < 40 || minY < 40 || minX > 500 || minY > 500) {
+        const offsetX = 80 - Math.min(0, minX);
+        const offsetY = 80 - Math.min(0, minY);
+        components.forEach((c) => {
+          c.x += offsetX;
+          c.y += offsetY;
+        });
+      }
+    }
+
+    // Auto-snap any components on or near breadboards to tie points
+    const breadboards = components.filter((c) => c.type.startsWith('breadboard'));
+    if (breadboards.length > 0) {
+      components.forEach((c) => {
+        if (c.type.startsWith('breadboard')) return;
+        breadboards.forEach((bb) => {
+          const snapped = this.snapCoordinatesToBreadboard(c, c.x, c.y, bb);
+          if (snapped.isSnapped) {
+            c.x = snapped.x;
+            c.y = snapped.y;
+          }
+        });
+      });
+    }
+
+    // Normalize connections
+    const connections = rawConns.map((rawConn, idx) => {
+      let fromComp = '', fromPin = '', toComp = '', toPin = '';
+      let color = '#38bdf8';
+
+      if (Array.isArray(rawConn)) {
+        const [fStr, tStr, cStr, bends] = rawConn;
+        [fromComp, fromPin] = (fStr || '').split(':');
+        [toComp, toPin] = (tStr || '').split(':');
+        color = cStr || color;
+        return {
+          id: 'wire_' + (idx + 1),
+          from: { component: fromComp, pin: fromPin },
+          to: { component: toComp, pin: toPin },
+          color,
+          bends: bends || []
+        };
+      }
+
+      if (rawConn.from && rawConn.to) {
+        fromComp = typeof rawConn.from === 'string' ? rawConn.from.split(':')[0] : rawConn.from.component || rawConn.from.id;
+        fromPin = typeof rawConn.from === 'string' ? rawConn.from.split(':')[1] : rawConn.from.pin;
+        toComp = typeof rawConn.to === 'string' ? rawConn.to.split(':')[0] : rawConn.to.component || rawConn.to.id;
+        toPin = typeof rawConn.to === 'string' ? rawConn.to.split(':')[1] : rawConn.to.pin;
+        color = rawConn.color || color;
+      }
+
+      return {
+        id: 'wire_' + (idx + 1),
+        from: { component: fromComp, pin: fromPin },
+        to: { component: toComp, pin: toPin },
+        color,
+        bends: rawConn.bends || []
+      };
+    });
+
+    return {
       metadata: {
-        title: tinkercadData.name || tinkercadData.title || 'Imported Tinkercad Circuit',
+        title,
         source: 'Tinkercad',
         version: '1.0.0',
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
-        author: tinkercadData.author || 'Tinkercad User'
+        author
       },
       viewport: { zoom: 1.0, panX: 0, panY: 0 },
-      components: [],
-      connections: []
+      components,
+      connections
     };
-
-    if (Array.isArray(tinkercadData.components)) {
-      project.components = tinkercadData.components;
-    }
-    if (Array.isArray(tinkercadData.connections)) {
-      project.connections = tinkercadData.connections;
-    }
-
-    return project;
   },
 
   /**

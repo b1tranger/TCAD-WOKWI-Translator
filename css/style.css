@@ -212,6 +212,26 @@ body {
   font-size: 0.75rem;
 }
 
+.btn-xs {
+  padding: 0.18rem 0.45rem;
+  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-sample-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-sample-chip:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--accent-sky);
+  color: var(--accent-sky);
+}
+
 /* ==========================================================================
    Quick Import Bar (Always-visible Tinkercad link input)
    ========================================================================== */

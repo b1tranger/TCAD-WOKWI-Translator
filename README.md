@@ -1,6 +1,6 @@
 # TCAD-WOKWI-Translator
 
-[![Version](https://img.shields.io/badge/version-v0.1.11-blue.svg)](doc/versions.md)
+[![Version](https://img.shields.io/badge/version-v0.1.12-blue.svg)](doc/versions.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Zero-Dependency](https://img.shields.io/badge/dependencies-zero-success.svg)](#)
 [![PWA Ready](https://img.shields.io/badge/PWA-offline%20ready-sky.svg)](sw.js)
@@ -47,7 +47,7 @@ Open `index.html` directly in any modern browser (Chrome, Firefox, Edge, Safari)
 TCAD-WOKWI-Translator/
 ├── index.html               # Main user interface & canvas viewport
 ├── manifest.json            # PWA manifest
-├── sw.js                    # Service worker (Cache version v0.1.11)
+├── sw.js                    # Service worker (Cache version v0.1.12)
 ├── AGENTS.md                # Agent guidelines & version sync rules
 ├── README.md                # Project documentation & roadmap
 ├── css/
@@ -69,9 +69,9 @@ TCAD-WOKWI-Translator/
 
 ## 📋 Features & Roadmap Checklist
 
-- [x] **Project Foundation & Scaffolding** (`v0.1.0 to v0.1.11`)
+- [x] **Project Foundation & Scaffolding** (`v0.1.0 to v0.1.12`)
   - [x] Zero-dependency Vanilla HTML5/CSS3/ES6 architecture
-  - [x] Service Worker Network-First offline caching (`sw.js` `v0.1.11`)
+  - [x] Service Worker Network-First offline caching (`sw.js` `v0.1.12`)
   - [x] Markdown-based changelog engine (`doc/versions.md`)
   - [x] Technical architecture specification (`doc/DOCUMENTATION.md`)
   - [x] Interactive dark/sky-blue UI with SVG workspace
@@ -97,6 +97,7 @@ TCAD-WOKWI-Translator/
   - [x] Clutter-free mobile top bar with bottom expanding Floating Action Menu (FAB) (`v0.1.10`)
   - [x] Mobile touch tap-hold-and-drag optimization & multi-touch pinch-to-zoom (`v0.1.10`)
   - [x] Mobile top bar GitHub, Docs, and Changelog button restoration (`v0.1.11`)
+  - [x] Universal Tinkercad public gallery ingestion, semantic synthesizer & breadboard snapping (`v0.1.12`)
 - [ ] **Interactive Breadboard Workspace**
   - [x] Grid coordinate snapping math (0.1-inch pitch)
   - [x] 38 core components: Full/Half/Mini Breadboards, Arduino Uno/Mega/Nano, ESP32, PIR, Ultrasonic, DC/Servo Motors, Relay, Diodes, TIP120 Transistors, LCD, OLED, 7-Segment, 9V/AA Batteries, Logic ICs

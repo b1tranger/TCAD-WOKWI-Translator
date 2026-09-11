@@ -178,7 +178,7 @@ Opening this HTML file in any browser displays the circuit without internet acce
 
 The application utilizes a cache-first Service Worker (`sw.js`). Line 5 declares the synchronized cache identifier:
 ```javascript
-const CACHE_VERSION = 'v0.1.11';
+const CACHE_VERSION = 'v0.1.12';
 ```
 When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are served immediately from the Cache Storage API via a Network-First strategy with offline fallback.
 
@@ -186,7 +186,7 @@ When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are 
 
 ## Version History
 
-- **v0.1.0 to v0.1.11 (2026-09-11)**: Resolved Wokwi export `UI.openModal` TypeError with dedicated modal helper methods. Redesigned mobile responsive layout with bottom expanding Floating Action Menu (FAB) and restored GitHub, Docs, and Changelog icons directly in the mobile top header for rapid 1-tap navigation. Optimized mobile touch tap-hold-and-drag interactions via `touch-action: none`, `e.preventDefault()`, and multi-touch 2-finger pinch-to-zoom. Synchronized offline cache to `v0.1.11`.
+- **v0.1.0 to v0.1.12 (2026-09-11)**: Implemented universal Tinkercad public gallery ingestion and dynamic semantic synthesizer capable of parsing and translating any public circuit link or raw JSON payload. Added automatic spatial layout preservation (MCU left, breadboard center, sensors/actuators perimeter), breadboard tie-point coordinate snapping, and logical net synthesis. Added 7 one-click gallery preset chips in the import dialog and synchronized offline cache to `v0.1.12`.
 
 
 
