@@ -51,6 +51,16 @@ export const COMPONENT_ALIAS_MAP = {
   'rgb-led': 'rgb-led',
   'rgb_led': 'rgb-led',
   'wokwi-rgb-led': 'rgb-led',
+  'neopixel': 'neopixel-strip',
+  'neopixel-strip': 'neopixel-strip',
+  'wokwi-neopixel-strip': 'neopixel-strip',
+  'ws2812': 'neopixel-strip',
+  'ws2812b': 'neopixel-strip',
+  'strip': 'neopixel-strip',
+  'neopixel-ring': 'neopixel-ring',
+  'wokwi-neopixel-ring': 'neopixel-ring',
+  'ring': 'neopixel-ring',
+  'neopixel-ring-12': 'neopixel-ring',
   'capacitor': 'capacitor',
   'cap': 'capacitor',
   'diode': 'diode',
@@ -160,6 +170,9 @@ export const Translator = {
     }
     if (clean.includes('resistor') || clean === 'res' || clean === 'r') return 'resistor';
     if (clean.includes('rgb')) return 'rgb-led';
+    if (clean.includes('neopixel') || clean.includes('ws2812')) {
+      return clean.includes('ring') ? 'neopixel-ring' : 'neopixel-strip';
+    }
     if (clean.includes('led')) return 'led';
     if (clean.includes('pot')) return 'potentiometer';
     if (clean.includes('servo')) return 'servo';
@@ -258,52 +271,208 @@ export const Translator = {
     return { x: rawX, y: rawY, isSnapped: false };
   },
   /**
-    * Convert Native Project Schema to Wokwi diagram.json
+   * Normalizes component pin identifiers to exact canonical Wokwi pin names
+   */
+  normalizeWokwiPin(wokwiType, rawPin) {
+    if (!rawPin) return rawPin;
+    const pin = String(rawPin).trim();
+    const type = (wokwiType || '').toLowerCase();
+
+    // Wokwi LED: strictly uppercase 'A' (anode) and 'C' (cathode)
+    if (type === 'wokwi-led' || type === 'led') {
+      if (/^(a|anode|pos|\+)$/i.test(pin)) return 'A';
+      if (/^(c|cathode|neg|\-|k)$/i.test(pin)) return 'C';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi Resistor: '1' and '2'
+    if (type === 'wokwi-resistor' || type === 'resistor') {
+      if (/^(1|t1|terminal1|p1|a)$/i.test(pin)) return '1';
+      if (/^(2|t2|terminal2|p2|b)$/i.test(pin)) return '2';
+      return pin;
+    }
+
+    // Wokwi Pushbutton: '1.l', '1.r', '2.l', '2.r'
+    if (type === 'wokwi-pushbutton' || type === 'pushbutton') {
+      if (/^(1|t1|1a|1\.l|terminal1a)$/i.test(pin)) return '1.l';
+      if (/^(1b|1\.r|terminal1b)$/i.test(pin)) return '1.r';
+      if (/^(2|t2|2a|2\.l|terminal2a)$/i.test(pin)) return '2.l';
+      if (/^(2b|2\.r|terminal2b)$/i.test(pin)) return '2.r';
+      return pin;
+    }
+
+    // Wokwi Potentiometer: 'GND', 'SIG', 'VCC'
+    if (type === 'wokwi-potentiometer' || type === 'potentiometer') {
+      if (/^(1|t1|term1|terminal_1|gnd)$/i.test(pin)) return 'GND';
+      if (/^(2|sig|signal|out|wiper)$/i.test(pin)) return 'SIG';
+      if (/^(3|t2|term2|terminal_2|vcc|5v)$/i.test(pin)) return 'VCC';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi HC-SR04 Ultrasonic: 'VCC', 'TRIG', 'ECHO', 'GND'
+    if (type === 'wokwi-hc-sr04' || type === 'ultrasonic-hcsr04') {
+      if (/^(vcc|5v|pwr)$/i.test(pin)) return 'VCC';
+      if (/^(trig|trigger)$/i.test(pin)) return 'TRIG';
+      if (/^echo$/i.test(pin)) return 'ECHO';
+      if (/^gnd$/i.test(pin)) return 'GND';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi Servo: 'GND', 'V+', 'PWM'
+    if (type === 'wokwi-servo' || type === 'servo') {
+      if (/^(gnd|ground|-)$/i.test(pin)) return 'GND';
+      if (/^(v\+|vcc|5v|power|\+)$/i.test(pin)) return 'V+';
+      if (/^(pwm|sig|signal|control)$/i.test(pin)) return 'PWM';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi Buzzer: '1', '2'
+    if (type === 'wokwi-buzzer' || type === 'buzzer') {
+      if (/^(1|pos|\+|sig|signal)$/i.test(pin)) return '1';
+      if (/^(2|neg|\-|gnd)$/i.test(pin)) return '2';
+      return pin;
+    }
+
+    // Wokwi Photoresistor Sensor: 'VCC', 'GND', 'DO', 'AO'
+    if (type === 'wokwi-photoresistor-sensor' || type === 'photoresistor') {
+      if (/^(vcc|5v|pwr|\+)$/i.test(pin)) return 'VCC';
+      if (/^(gnd|-)$/i.test(pin)) return 'GND';
+      if (/^(do|digital)$/i.test(pin)) return 'DO';
+      if (/^(ao|sig|signal|analog|out)$/i.test(pin)) return 'AO';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi PIR Motion Sensor: 'VCC', 'OUT', 'GND'
+    if (type === 'wokwi-pir-motion-sensor' || type === 'pir-sensor') {
+      if (/^(vcc|5v|pwr|\+)$/i.test(pin)) return 'VCC';
+      if (/^(out|sig|signal)$/i.test(pin)) return 'OUT';
+      if (/^(gnd|-)$/i.test(pin)) return 'GND';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi NeoPixel Strip & Ring: 'DIN', 'DOUT', 'VCC', 'GND'
+    if (type.includes('neopixel') || type.includes('ws2812')) {
+      if (/^(din|in|di|data|din\.1)$/i.test(pin)) return 'DIN';
+      if (/^(dout|out|do)$/i.test(pin)) return 'DOUT';
+      if (/^(vcc|5v|pwr|\+|v\+)$/i.test(pin)) return 'VCC';
+      if (/^(gnd|ground|\-)$/i.test(pin)) return 'GND';
+      return pin.toUpperCase();
+    }
+
+    // Wokwi Arduino boards: 0..13, A0..A5, GND.1, GND.2, GND.3, 5V, VIN
+    if (type.includes('arduino')) {
+      if (/^gnd(\.1|_1)?$/i.test(pin)) return 'GND.1';
+      if (/^gnd\.2|_2$/i.test(pin)) return 'GND.2';
+      if (/^gnd\.3|_3$/i.test(pin)) return 'GND.3';
+      if (/^5v$/i.test(pin)) return '5V';
+      if (/^vin$/i.test(pin)) return 'VIN';
+      if (/^d(\d+)$/i.test(pin)) return pin.replace(/^d/i, '');
+      if (/^a(\d+)$/i.test(pin)) return pin.toUpperCase();
+      return pin;
+    }
+
+    return pin;
+  },
+
+  /**
+   * Convert Native Project Schema to Wokwi diagram.json
+   * Collapses breadboard tie strips and power rails into direct component-to-component Wokwi wires
    */
   toWokwi(project) {
-    const parts = (project.components || []).map((comp) => {
-      const catalogEntry = COMPONENT_CATALOG[comp.type] || {};
-      return {
-        type: catalogEntry.wokwiType || `wokwi-${comp.type}`,
-        id: comp.id,
-        top: Math.round(comp.y || 0),
-        left: Math.round(comp.x || 0),
-        rotate: comp.rotation || 0,
-        attrs: { ...(comp.properties || {}) }
-      };
-    });
+    const compMap = new Map();
+    (project.components || []).forEach((c) => compMap.set(c.id, c));
 
-    const connections = (project.connections || []).map((conn) => {
-      const fromPin = `${conn.from.component}:${conn.from.pin}`;
-      const toPin = `${conn.to.component}:${conn.to.pin}`;
+    // Wokwi does NOT have a breadboard simulator component.
+    // Filter out breadboards from parts list so Wokwi only receives simulatable physical components.
+    const parts = (project.components || [])
+      .filter((comp) => !comp.type.startsWith('breadboard'))
+      .map((comp) => {
+        const catalogEntry = COMPONENT_CATALOG[comp.type] || {};
+        return {
+          type: catalogEntry.wokwiType || `wokwi-${comp.type}`,
+          id: comp.id,
+          top: Math.round(comp.y || 0),
+          left: Math.round(comp.x || 0),
+          rotate: comp.rotation || 0,
+          attrs: { ...(comp.properties || {}) }
+        };
+      });
+
+    const breadboards = (project.components || []).filter((c) =>
+      c.type === 'breadboard-half' || c.type === 'breadboard-full' || c.type === 'breadboard-mini'
+    );
+
+    // Helper to map breadboard pin / hole name to electrical net ID
+    const getBreadboardNet = (bbId, pinStr) => {
+      const p = (pinStr || '').toLowerCase();
+      if (/top_rail_pos|tp\./i.test(p)) return `${bbId}:PWR_TOP_POS`;
+      if (/top_rail_neg|tn\./i.test(p)) return `${bbId}:PWR_TOP_NEG`;
+      if (/bottom_rail_pos|bp\./i.test(p)) return `${bbId}:PWR_BTM_POS`;
+      if (/bottom_rail_neg|bn\./i.test(p)) return `${bbId}:PWR_BTM_NEG`;
+      const colMatch = p.match(/(\d+)[tb]\.|tie_row_(\d+)|column_(\d+)|col_(\d+)/i);
+      if (colMatch) {
+        const colNum = colMatch[1] || colMatch[2] || colMatch[3] || colMatch[4];
+        const half = p.includes('b.') ? 'b' : 't';
+        return `${bbId}:COL_${colNum}_${half}`;
+      }
+      return `${bbId}:${pinStr}`;
+    };
+
+    const nets = new Map();
+    const addToNet = (netId, compId, pin, color = 'green') => {
+      if (!nets.has(netId)) nets.set(netId, []);
+      const list = nets.get(netId);
+      if (!list.some((item) => item.compId === compId && item.pin === pin)) {
+        list.push({ compId, pin, color });
+      }
+    };
+
+    const directConnections = [];
+
+    // 1. Process explicit project connections
+    (project.connections || []).forEach((conn) => {
+      const fromComp = compMap.get(conn.from.component);
+      const toComp = compMap.get(conn.to.component);
+      if (!fromComp || !toComp) return;
+
+      const fromIsBb = fromComp.type.startsWith('breadboard');
+      const toIsBb = toComp.type.startsWith('breadboard');
+
       let color = conn.color || 'blue';
-      // Map standard hex colors to canonical Wokwi wire names
       if (color === '#ef4444' || color === '#dc2626') color = 'red';
       else if (color === '#0f172a' || color === '#1e293b' || color === '#000000' || color === '#000') color = 'black';
       else if (color === '#10b981' || color === '#059669' || color === '#22c55e') color = 'green';
       else if (color === '#eab308' || color === '#f59e0b' || color === '#fbbf24') color = 'yellow';
       else if (color === '#0284c7' || color === '#38bdf8' || color === '#2563eb') color = 'blue';
+      else if (color === '#f97316') color = 'orange';
 
-      const instructions = conn.bends || [];
-      return [fromPin, toPin, color, instructions];
+      if (!fromIsBb && !toIsBb) {
+        // Direct component-to-component connection
+        const fromType = COMPONENT_CATALOG[fromComp.type]?.wokwiType || `wokwi-${fromComp.type}`;
+        const toType = COMPONENT_CATALOG[toComp.type]?.wokwiType || `wokwi-${toComp.type}`;
+        const normFromPin = this.normalizeWokwiPin(fromType, conn.from.pin);
+        const normToPin = this.normalizeWokwiPin(toType, conn.to.pin);
+        directConnections.push([
+          `${fromComp.id}:${normFromPin}`,
+          `${toComp.id}:${normToPin}`,
+          color,
+          conn.bends || []
+        ]);
+      } else if (!fromIsBb && toIsBb) {
+        const netId = getBreadboardNet(toComp.id, conn.to.pin);
+        addToNet(netId, fromComp.id, conn.from.pin, color);
+      } else if (fromIsBb && !toIsBb) {
+        const netId = getBreadboardNet(fromComp.id, conn.from.pin);
+        addToNet(netId, toComp.id, conn.to.pin, color);
+      }
     });
 
-    // Synthesize Logical Breadboard Connections:
-    // If any component pin sits on a breadboard column or power rail, logically connect it
-    const breadboards = (project.components || []).filter((c) =>
-      c.type === 'breadboard-half' || c.type === 'breadboard-full' || c.type === 'breadboard-mini'
-    );
-
+    // 2. Synthesize connections from components physically seated on breadboard tie points
     if (breadboards.length > 0) {
-      const existingConnKeys = new Set(
-        connections.map((c) => `${c[0]}<->${c[1]}`)
-      );
-
       (project.components || []).forEach((comp) => {
         if (comp.type.startsWith('breadboard')) return;
 
         breadboards.forEach((bb) => {
-          // Check collision with breadboard
           const bbWidth = bb.type === 'breadboard-full' ? 680 : bb.type === 'breadboard-mini' ? 240 : 560;
           const bbHeight = 252;
           if (
@@ -312,25 +481,78 @@ export const Translator = {
             comp.y >= bb.y - 20 &&
             comp.y <= bb.y + bbHeight
           ) {
-            // Find component pins and match to breadboard holes
             const pins = this.getComponentPins(comp);
-            pins.forEach((pin) => {
-              const hole = this.resolveHoleOnBreadboard(pin.x, pin.y, bb);
+            pins.forEach((p) => {
+              const hole = this.resolveHoleOnBreadboard(p.x, p.y, bb);
               if (hole) {
-                const compPinStr = `${comp.id}:${pin.name}`;
-                const bbPinStr = `${bb.id}:${hole}`;
-                const key1 = `${compPinStr}<->${bbPinStr}`;
-                const key2 = `${bbPinStr}<->${compPinStr}`;
-                if (!existingConnKeys.has(key1) && !existingConnKeys.has(key2)) {
-                  existingConnKeys.add(key1);
-                  connections.push([compPinStr, bbPinStr, 'green', []]);
-                }
+                const netId = getBreadboardNet(bb.id, hole);
+                addToNet(netId, comp.id, p.name, 'green');
               }
             });
           }
         });
       });
     }
+
+    // 3. Resolve each breadboard net into direct component-to-component Wokwi wire pairs
+    const connections = [...directConnections];
+    const existingKeys = new Set();
+    connections.forEach((c) => {
+      existingKeys.add(`${c[0]}<->${c[1]}`);
+      existingKeys.add(`${c[1]}<->${c[0]}`);
+    });
+
+    nets.forEach((nodes, netId) => {
+      // Deduplicate pins per component
+      const uniquePins = [];
+      const seen = new Set();
+      for (const node of nodes) {
+        const key = `${node.compId}:${node.pin}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniquePins.push(node);
+        }
+      }
+      if (uniquePins.length < 2) return;
+
+      // Prioritize power sources (Arduino, power supply, battery) as net origin
+      const sources = uniquePins.filter((n) => {
+        const c = compMap.get(n.compId);
+        return c && (c.type.includes('arduino') || c.type.includes('power-supply') || c.type.includes('battery'));
+      });
+      const nonSources = uniquePins.filter((n) => !sources.includes(n));
+      const ordered = [...sources, ...nonSources];
+
+      const hub = ordered[0];
+      const hubComp = compMap.get(hub.compId);
+      if (!hubComp) return;
+      const hubType = COMPONENT_CATALOG[hubComp.type]?.wokwiType || `wokwi-${hubComp.type}`;
+      const hubPinStr = `${hub.compId}:${this.normalizeWokwiPin(hubType, hub.pin)}`;
+
+      for (let i = 1; i < ordered.length; i++) {
+        const target = ordered[i];
+        if (target.compId === hub.compId) continue; // Never connect a component to its own pins
+
+        const targetComp = compMap.get(target.compId);
+        if (!targetComp) continue;
+        const targetType = COMPONENT_CATALOG[targetComp.type]?.wokwiType || `wokwi-${targetComp.type}`;
+        const targetPinStr = `${target.compId}:${this.normalizeWokwiPin(targetType, target.pin)}`;
+
+        const k1 = `${hubPinStr}<->${targetPinStr}`;
+        const k2 = `${targetPinStr}<->${hubPinStr}`;
+
+        if (!existingKeys.has(k1) && !existingKeys.has(k2)) {
+          existingKeys.add(k1);
+          existingKeys.add(k2);
+
+          let wireColor = target.color || hub.color || 'green';
+          if (netId.includes('NEG')) wireColor = 'black';
+          else if (netId.includes('POS')) wireColor = 'red';
+
+          connections.push([hubPinStr, targetPinStr, wireColor, []]);
+        }
+      }
+    });
 
     return {
       version: 1,
@@ -425,12 +647,15 @@ export const Translator = {
    */
   fromWokwi(wokwiData) {
     const components = (wokwiData.parts || []).map((part) => {
-      let matchedType = 'breadboard-half';
+      let matchedType = null;
       for (const [typeKey, info] of Object.entries(COMPONENT_CATALOG)) {
         if (info.wokwiType === part.type) {
           matchedType = typeKey;
           break;
         }
+      }
+      if (!matchedType) {
+        matchedType = this.normalizeComponentType(part.type);
       }
 
       return {
@@ -459,11 +684,363 @@ export const Translator = {
 
     return {
       metadata: {
-        title: 'Imported from Wokwi',
+        title: wokwiData.attrs?.title || wokwiData.title || wokwiData.name || 'Imported Wokwi Diagram',
         version: '1.0.0',
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         author: wokwiData.author || 'Wokwi User'
+      },
+      viewport: { zoom: 1.0, panX: 0, panY: 0 },
+      components,
+      connections
+    };
+  },
+
+  /**
+  /**
+   * Classify Eagle component element into schema catalog type
+   */
+  classifyEagleComponent(name = '', value = '', pkg = '', library = '') {
+    const searchKey = `${name} ${value} ${pkg} ${library}`.toLowerCase();
+
+    if (/arduino.*mega|mega/i.test(searchKey)) return 'arduino-mega';
+    if (/arduino.*nano|nano/i.test(searchKey)) return 'arduino-nano';
+    if (/esp32/i.test(searchKey)) return 'esp32';
+    if (/arduino|uno|atmega328/i.test(searchKey)) return 'arduino-uno';
+    if (/breadboard/i.test(searchKey)) {
+      return searchKey.includes('full') ? 'breadboard-full' : searchKey.includes('mini') ? 'breadboard-mini' : 'breadboard-half';
+    }
+    if (/neopixel.*ring|ring.*12|ring.*16|ring.*24/i.test(searchKey)) return 'neopixel-ring';
+    if (/neopixel|ws2812|strip/i.test(searchKey)) return 'neopixel-strip';
+    if (/lcd|1602|hd44780/i.test(searchKey)) return 'lcd1602-i2c';
+    if (/oled|ssd1306/i.test(searchKey)) return 'oled-ssd1306';
+    if (/7seg|seven/i.test(searchKey)) return '7segment';
+
+    // Logic ICs (DIP-14 gates)
+    if (/74hc08|7408/i.test(searchKey)) return 'chip-7408';
+    if (/74hc04|7404/i.test(searchKey)) return 'chip-74hc04';
+    if (/74hc32|7432/i.test(searchKey)) return 'chip-74hc32';
+    if (/74hc00|7400/i.test(searchKey)) return 'chip-7400';
+    if (/74hc02|7402/i.test(searchKey)) return 'dip-ic';
+    if (/74hc11|7411/i.test(searchKey)) return 'dip-ic';
+    if (/74hc86|7486/i.test(searchKey)) return 'dip-ic';
+    if (/74hc132|74132/i.test(searchKey)) return 'chip-7400';
+    if (/555|ne555/i.test(searchKey)) return 'chip-555';
+    if (/^u\d*$/i.test(name) && /dip|pdip|soic/i.test(pkg)) return 'dip-ic';
+
+    // LEDs & indicators
+    if (/rgb.*led/i.test(searchKey)) return 'rgb-led';
+    if (/ledrd|led/i.test(pkg) || /lightbulb|bulb/i.test(searchKey) || (/^d\d*$/i.test(name) && /red|green|blue|yellow|led/i.test(searchKey))) return 'led';
+
+    // Resistors & Capacitors
+    if (/^r\d*|resistor|res/i.test(name) || /resistor/i.test(searchKey)) return 'resistor';
+    if (/^c\d*|capacitor|cap/i.test(name) || /capacitor/i.test(searchKey)) return 'capacitor';
+    if (/^d\d*|diode/i.test(name) || /1n400|diode/i.test(searchKey)) return 'diode';
+
+    // Switches & Inputs
+    if (/78b|spst|dip.*switch/i.test(searchKey)) return 'dip-switch-4';
+    if (/pot|potentiometer|trim/i.test(searchKey)) return 'potentiometer';
+    if (/button|push|btn|tact/i.test(searchKey)) return 'pushbutton';
+    if (/switch|spdt/i.test(searchKey)) return 'slide-switch';
+
+    // Actuators & Sensors
+    if (/buzzer|piezo/i.test(searchKey)) return 'buzzer';
+    if (/servo|sg90/i.test(searchKey)) return 'servo';
+    if (/motor/i.test(searchKey)) return 'dc-motor';
+    if (/relay/i.test(searchKey)) return 'relay';
+    if (/tmp36|temperature/i.test(searchKey)) return 'sensor-tmp36';
+    if (/pir/i.test(searchKey)) return 'pir-sensor';
+    if (/ultrasonic|hcsr04/i.test(searchKey)) return 'ultrasonic-hcsr04';
+    if (/photo|ldr/i.test(searchKey)) return 'photoresistor';
+
+    // Power
+    if (/power.*supply/i.test(searchKey)) return 'power-supply';
+    if (/battery|generic/i.test(searchKey) || /^p\d*$/i.test(name)) {
+      return searchKey.includes('9v') ? 'battery-9v' : 'battery-aa-4';
+    }
+
+    return this.normalizeComponentType(searchKey);
+  },
+
+  /**
+   * Universal EAGLE BRD XML Parser
+   * Converts Autodesk EAGLE .brd XML export into Native Project Schema
+   */
+  fromEagleBrd(xmlStr) {
+    if (!xmlStr || typeof xmlStr !== 'string') {
+      throw new Error('Invalid EAGLE BRD XML content');
+    }
+
+    let elements = [];
+    let signals = [];
+    let title = 'Imported EAGLE Circuit';
+
+    if (typeof DOMParser !== 'undefined') {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlStr, 'application/xml');
+        const parseError = doc.getElementsByTagName('parsererror');
+        if (!parseError || parseError.length === 0) {
+          elements = Array.from(doc.getElementsByTagName('element'));
+          if (elements.length === 0) {
+            elements = Array.from(doc.getElementsByTagName('ELEMENT'));
+          }
+          signals = Array.from(doc.getElementsByTagName('signal'));
+          if (signals.length === 0) {
+            signals = Array.from(doc.getElementsByTagName('SIGNAL'));
+          }
+          const descEl = doc.querySelector('drawing > board > description, drawing > description');
+          if (descEl?.textContent?.trim()) {
+            title = descEl.textContent.trim();
+          }
+        }
+      } catch (e) {
+        // Fall back to regex
+      }
+    }
+
+    // If DOMParser failed or returned 0 elements, automatically fall back to regex parser
+    if (elements.length === 0) {
+      return this.fromEagleBrdRegex(xmlStr);
+    }
+
+    const rawComponents = [];
+    elements.forEach((el, idx) => {
+      const name = el.getAttribute('name') || `COMP_${idx + 1}`;
+      const library = el.getAttribute('library') || '';
+      const pkg = el.getAttribute('package') || '';
+      const value = el.getAttribute('value') || '';
+      const rawX = parseFloat(el.getAttribute('x') || '0');
+      const rawY = parseFloat(el.getAttribute('y') || '0');
+      const rotStr = el.getAttribute('rot') || 'R0';
+
+      let rotation = 0;
+      const rotMatch = rotStr.match(/R(\d+)/i);
+      if (rotMatch) {
+        rotation = parseInt(rotMatch[1], 10) % 360;
+      }
+
+      const compType = this.classifyEagleComponent(name, value, pkg, library);
+
+      rawComponents.push({
+        id: name.toLowerCase(),
+        origName: name,
+        type: compType,
+        rawX,
+        rawY,
+        rotation,
+        properties: {
+          value: value || undefined,
+          package: pkg || undefined,
+          library: library || undefined
+        }
+      });
+    });
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    rawComponents.forEach(c => {
+      minX = Math.min(minX, c.rawX);
+      minY = Math.min(minY, c.rawY);
+      maxX = Math.max(maxX, c.rawX);
+      maxY = Math.max(maxY, c.rawY);
+    });
+
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const scaleFactor = (spanX > 0 && spanX < 350 && spanY < 350) ? 3.8 : 1.0;
+
+    const components = rawComponents.map((c, idx) => {
+      const x = isFinite(minX) ? Math.round(60 + (c.rawX - minX) * scaleFactor) : 80 + (idx % 4) * 160;
+      const y = isFinite(maxY) ? Math.round(60 + (maxY - c.rawY) * scaleFactor) : 80 + Math.floor(idx / 4) * 160;
+      return {
+        id: c.id,
+        type: c.type,
+        x,
+        y,
+        rotation: c.rotation,
+        properties: c.properties
+      };
+    });
+
+    const nameToCompId = new Map();
+    rawComponents.forEach(c => {
+      nameToCompId.set(c.origName.toLowerCase(), c.id);
+    });
+
+    const connections = [];
+    let wireCount = 0;
+
+    signals.forEach(sig => {
+      const sigName = sig.getAttribute('name') || '';
+      let contacts = Array.from(sig.getElementsByTagName('contactref'));
+      if (contacts.length === 0) {
+        contacts = Array.from(sig.getElementsByTagName('CONTACTREF'));
+      }
+      if (contacts.length < 2) return;
+
+      let color = '#38bdf8';
+      const sigLower = sigName.toLowerCase();
+      if (sigLower.includes('gnd') || sigLower.includes('p1-') || sigLower.includes('neg')) color = '#0f172a';
+      else if (sigLower.includes('vcc') || sigLower.includes('5v') || sigLower.includes('3v3') || sigLower.includes('pwr') || sigLower.includes('p1+') || sigLower.includes('pos')) color = '#ef4444';
+      else if (sigLower.includes('sda') || sigLower.includes('scl')) color = '#0284c7';
+      else if (sigLower.includes('din') || sigLower.includes('data') || sigLower.includes('out')) color = '#eab308';
+      else if (sigLower.includes('sig') || sigLower.includes('sw')) color = '#10b981';
+
+      const hub = contacts[0];
+      const hubEl = (hub.getAttribute('element') || '').toLowerCase();
+      const hubPad = hub.getAttribute('pad') || '1';
+      const hubCompId = nameToCompId.get(hubEl);
+
+      for (let i = 1; i < contacts.length; i++) {
+        const tgt = contacts[i];
+        const tgtEl = (tgt.getAttribute('element') || '').toLowerCase();
+        const tgtPad = tgt.getAttribute('pad') || '1';
+        const tgtCompId = nameToCompId.get(tgtEl);
+
+        if (hubCompId && tgtCompId && hubCompId !== tgtCompId) {
+          wireCount++;
+          connections.push({
+            id: `wire_${wireCount}`,
+            from: { component: hubCompId, pin: hubPad },
+            to: { component: tgtCompId, pin: tgtPad },
+            color,
+            bends: []
+          });
+        }
+      }
+    });
+
+    return {
+      metadata: {
+        title,
+        version: '1.0.0',
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        author: 'Autodesk EAGLE'
+      },
+      viewport: { zoom: 1.0, panX: 0, panY: 0 },
+      components,
+      connections
+    };
+  },
+
+  /**
+   * Regex-based fallback EAGLE BRD parser (works in pure Node.js environments without DOMParser)
+   */
+  fromEagleBrdRegex(xmlStr) {
+    const rawComponents = [];
+    const elementRegex = /<element\s+([^>]+?)\/?>/gi;
+    let match;
+
+    while ((match = elementRegex.exec(xmlStr)) !== null) {
+      const attrsStr = match[1];
+      const getAttr = (name) => {
+        const m = attrsStr.match(new RegExp(`${name}="([^"]*)"`, 'i'));
+        return m ? m[1] : '';
+      };
+
+      const name = getAttr('name') || `COMP_${rawComponents.length + 1}`;
+      const library = getAttr('library');
+      const pkg = getAttr('package');
+      const value = getAttr('value');
+      const rawX = parseFloat(getAttr('x') || '0');
+      const rawY = parseFloat(getAttr('y') || '0');
+      const rotStr = getAttr('rot') || 'R0';
+
+      let rotation = 0;
+      const rotMatch = rotStr.match(/R(\d+)/i);
+      if (rotMatch) rotation = parseInt(rotMatch[1], 10) % 360;
+
+      const compType = this.classifyEagleComponent(name, value, pkg, library);
+
+      rawComponents.push({
+        id: name.toLowerCase(),
+        origName: name,
+        type: compType,
+        rawX,
+        rawY,
+        rotation,
+        properties: { value, package: pkg, library }
+      });
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    rawComponents.forEach(c => {
+      minX = Math.min(minX, c.rawX);
+      minY = Math.min(minY, c.rawY);
+      maxX = Math.max(maxX, c.rawX);
+      maxY = Math.max(maxY, c.rawY);
+    });
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const scaleFactor = (spanX > 0 && spanX < 350 && spanY < 350) ? 3.8 : 1.0;
+
+    const components = rawComponents.map((c, idx) => {
+      const x = isFinite(minX) ? Math.round(60 + (c.rawX - minX) * scaleFactor) : 80 + (idx % 4) * 160;
+      const y = isFinite(maxY) ? Math.round(60 + (maxY - c.rawY) * scaleFactor) : 80 + Math.floor(idx / 4) * 160;
+      return { id: c.id, type: c.type, x, y, rotation: c.rotation, properties: c.properties };
+    });
+
+    const nameToCompId = new Map();
+    rawComponents.forEach(c => nameToCompId.set(c.origName.toLowerCase(), c.id));
+
+    const connections = [];
+    let wireCount = 0;
+    const signalRegex = /<signal\s+name="([^"]*)"[^>]*>(.*?)<\/signal>/gis;
+    let sigMatch;
+
+    while ((sigMatch = signalRegex.exec(xmlStr)) !== null) {
+      const sigName = sigMatch[1];
+      const inner = sigMatch[2];
+      const contactRegex = /<contactref\s+([^>]+?)\/?>/gi;
+      const contacts = [];
+      let cMatch;
+
+      while ((cMatch = contactRegex.exec(inner)) !== null) {
+        const cAttrs = cMatch[1];
+        const elM = cAttrs.match(/element="([^"]*)"/i);
+        const padM = cAttrs.match(/pad="([^"]*)"/i);
+        if (elM) {
+          contacts.push({ element: elM[1], pad: padM ? padM[1] : '1' });
+        }
+      }
+
+      if (contacts.length < 2) continue;
+
+      let color = '#38bdf8';
+      const sigLower = sigName.toLowerCase();
+      if (sigLower.includes('gnd') || sigLower.includes('p1-') || sigLower.includes('neg')) color = '#0f172a';
+      else if (sigLower.includes('vcc') || sigLower.includes('5v') || sigLower.includes('3v3') || sigLower.includes('p1+') || sigLower.includes('pos')) color = '#ef4444';
+      else if (sigLower.includes('sda') || sigLower.includes('scl')) color = '#0284c7';
+      else if (sigLower.includes('din') || sigLower.includes('data')) color = '#eab308';
+      else if (sigLower.includes('sig') || sigLower.includes('sw')) color = '#10b981';
+
+      const hub = contacts[0];
+      const hubCompId = nameToCompId.get(hub.element.toLowerCase());
+
+      for (let i = 1; i < contacts.length; i++) {
+        const tgt = contacts[i];
+        const tgtCompId = nameToCompId.get(tgt.element.toLowerCase());
+        if (hubCompId && tgtCompId && hubCompId !== tgtCompId) {
+          wireCount++;
+          connections.push({
+            id: `wire_${wireCount}`,
+            from: { component: hubCompId, pin: hub.pad },
+            to: { component: tgtCompId, pin: tgt.pad },
+            color,
+            bends: []
+          });
+        }
+      }
+    }
+
+    return {
+      metadata: {
+        title: 'Imported EAGLE Circuit',
+        version: '1.0.0',
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        author: 'Autodesk EAGLE'
       },
       viewport: { zoom: 1.0, panX: 0, panY: 0 },
       components,
@@ -537,28 +1114,25 @@ export const Translator = {
       throw new Error('Invalid Tinkercad URL format. Expected: https://www.tinkercad.com/things/<id>?sharecode=...');
     }
 
-    let pageTitle = urlInfo.title;
+    let pageTitle = urlInfo.title || '';
 
-    // 2. Attempt fetching via CORS proxies to extract live page metadata
-    const proxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(urlStr)}`,
-      `https://corsproxy.io/?url=${encodeURIComponent(urlStr)}`
-    ];
-
-    for (const proxyUrl of proxies) {
+    // If slug is missing (only bare thingId), attempt silent non-blocking title resolution
+    if (!urlInfo.slug && urlStr) {
       try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) });
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlStr)}`;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
-          const html = await res.text();
-          const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-          if (titleMatch && titleMatch[1]) {
-            const rawTitle = titleMatch[1].replace('- Tinkercad', '').replace('Circuit design', '').trim();
-            if (rawTitle) pageTitle = rawTitle;
+          const json = await res.json();
+          if (json && json.contents) {
+            const titleMatch = json.contents.match(/<title>([^<]+)<\/title>/i);
+            if (titleMatch && titleMatch[1]) {
+              const rawTitle = titleMatch[1].replace('- Tinkercad', '').replace('Circuit design', '').trim();
+              if (rawTitle) pageTitle = rawTitle;
+            }
           }
-          break;
         }
       } catch {
-        // Fallback to URL info if CORS proxy fails or times out
+        // Silent fallback - never block or pollute console
       }
     }
 
@@ -1534,6 +2108,7 @@ export const Translator = {
       );
     } else if (/traffic|semaforo|ampel|feux/i.test(slug) || /traffic.*light/i.test(title)) {
       // Traffic Light Controller (Red, Yellow, Green LEDs with Current-Limiting Resistors)
+      // Supports Pedestrian Crossing if pedestrian/crossing/crosswalk keywords are present
       components.push(
         { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
         { id: 'led_red', type: 'led', x: 520, y: 95, rotation: 0, properties: { color: 'red', label: 'Red Light' } },
@@ -1551,7 +2126,67 @@ export const Translator = {
         { id: 'w_sig_green', from: { component: 'arduino_uno', pin: '11' }, to: { component: 'led_green', pin: 'a' }, color: '#10b981', bends: [] },
         { id: 'w_r_red_gnd', from: { component: 'res_red', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_5' }, color: '#0f172a', bends: [] },
         { id: 'w_r_yel_gnd', from: { component: 'res_yellow', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_10' }, color: '#0f172a', bends: [] },
-        { id: 'w_r_grn_gnd', from: { component: 'res_green', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] }
+        { id: 'w_r_grn_gnd', from: { component: 'res_green', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_15' }, color: '#0f172a', bends: [] },
+        { id: 'w_lr_res', from: { component: 'led_red', pin: 'c' }, to: { component: 'res_red', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_ly_res', from: { component: 'led_yellow', pin: 'c' }, to: { component: 'res_yellow', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_lg_res', from: { component: 'led_green', pin: 'c' }, to: { component: 'res_green', pin: '1' }, color: '#10b981', bends: [] }
+      );
+
+      const isPedestrian = /pedestrian|crossing|crosswalk|ped/i.test(slug + ' ' + title);
+      if (isPedestrian) {
+        components.push(
+          { id: 'led_ped_red', type: 'led', x: 775, y: 95, rotation: 0, properties: { color: 'red', label: "Don't Walk" } },
+          { id: 'led_ped_grn', type: 'led', x: 860, y: 95, rotation: 0, properties: { color: 'green', label: 'Walk' } },
+          { id: 'res_ped_red', type: 'resistor', x: 775, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+          { id: 'res_ped_grn', type: 'resistor', x: 860, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+          { id: 'btn_cross', type: 'pushbutton', x: 940, y: 160, rotation: 0, properties: { label: 'Crosswalk Button' } }
+        );
+        connections.push(
+          { id: 'w_sig_ped_red', from: { component: 'arduino_uno', pin: '8' }, to: { component: 'led_ped_red', pin: 'a' }, color: '#ef4444', bends: [] },
+          { id: 'w_sig_ped_grn', from: { component: 'arduino_uno', pin: '7' }, to: { component: 'led_ped_grn', pin: 'a' }, color: '#10b981', bends: [] },
+          { id: 'w_r_ped_r_gnd', from: { component: 'res_ped_red', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_20' }, color: '#0f172a', bends: [] },
+          { id: 'w_r_ped_g_gnd', from: { component: 'res_ped_grn', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_25' }, color: '#0f172a', bends: [] },
+          { id: 'w_lpr_res', from: { component: 'led_ped_red', pin: 'c' }, to: { component: 'res_ped_red', pin: '1' }, color: '#10b981', bends: [] },
+          { id: 'w_lpg_res', from: { component: 'led_ped_grn', pin: 'c' }, to: { component: 'res_ped_grn', pin: '1' }, color: '#10b981', bends: [] },
+          { id: 'w_btn_sig', from: { component: 'arduino_uno', pin: '2' }, to: { component: 'btn_cross', pin: '1a' }, color: '#0284c7', bends: [] },
+          { id: 'w_btn_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_28' }, to: { component: 'btn_cross', pin: '2a' }, color: '#ef4444', bends: [] }
+        );
+      }
+    } else if (/valentine|heart|love|contest/i.test(slug) || /valentine|heart|love|contest/i.test(title)) {
+      // Valentine's Day Contest & Heart Display System
+      components.push(
+        { id: 'arduino_uno', type: 'arduino-uno', x: 60, y: 100, rotation: 0, properties: { label: 'Arduino Uno' } },
+        { id: 'lcd_i2c', type: 'lcd1602-i2c', x: 420, y: 340, rotation: 0, properties: { label: '16x2 I2C LCD', text: 'Happy Valentine! <3' } },
+        { id: 'pot_dimmer', type: 'potentiometer', x: 500, y: 160, rotation: 0, properties: { label: 'Brightness Dimmer', resistance: '10k' } },
+        { id: 'btn_cycle', type: 'pushbutton', x: 590, y: 160, rotation: 0, properties: { label: 'Effect Cycle' } },
+        { id: 'led_heart_1', type: 'led', x: 470, y: 95, rotation: 0, properties: { color: 'red', label: 'Heart Left' } },
+        { id: 'led_heart_2', type: 'led', x: 540, y: 75, rotation: 0, properties: { color: 'red', label: 'Heart Center' } },
+        { id: 'led_heart_3', type: 'led', x: 610, y: 95, rotation: 0, properties: { color: 'red', label: 'Heart Right' } },
+        { id: 'res_heart_1', type: 'resistor', x: 470, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+        { id: 'res_heart_2', type: 'resistor', x: 540, y: 140, rotation: 90, properties: { resistance: '220', label: '220Ω' } },
+        { id: 'res_heart_3', type: 'resistor', x: 610, y: 160, rotation: 90, properties: { resistance: '220', label: '220Ω' } }
+      );
+      connections.push(
+        { id: 'w_gnd', from: { component: 'arduino_uno', pin: 'GND.1' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_1' }, color: '#0f172a', bends: [] },
+        { id: 'w_5v', from: { component: 'arduino_uno', pin: '5V' }, to: { component: 'bb_main', pin: 'top_rail_pos_1' }, color: '#ef4444', bends: [] },
+        { id: 'w_lcd_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_18' }, to: { component: 'lcd_i2c', pin: 'VCC' }, color: '#ef4444', bends: [] },
+        { id: 'w_lcd_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_18' }, to: { component: 'lcd_i2c', pin: 'GND' }, color: '#0f172a', bends: [] },
+        { id: 'w_lcd_sda', from: { component: 'arduino_uno', pin: 'A4' }, to: { component: 'lcd_i2c', pin: 'SDA' }, color: '#0284c7', bends: [] },
+        { id: 'w_lcd_scl', from: { component: 'arduino_uno', pin: 'A5' }, to: { component: 'lcd_i2c', pin: 'SCL' }, color: '#eab308', bends: [] },
+        { id: 'w_pot_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_10' }, to: { component: 'pot_dimmer', pin: '1' }, color: '#ef4444', bends: [] },
+        { id: 'w_pot_sig', from: { component: 'arduino_uno', pin: 'A0' }, to: { component: 'pot_dimmer', pin: '2' }, color: '#0284c7', bends: [] },
+        { id: 'w_pot_gnd', from: { component: 'bb_main', pin: 'bottom_rail_neg_10' }, to: { component: 'pot_dimmer', pin: '3' }, color: '#0f172a', bends: [] },
+        { id: 'w_btn_sig', from: { component: 'arduino_uno', pin: '2' }, to: { component: 'btn_cycle', pin: '1a' }, color: '#10b981', bends: [] },
+        { id: 'w_btn_vcc', from: { component: 'bb_main', pin: 'top_rail_pos_22' }, to: { component: 'btn_cycle', pin: '2a' }, color: '#ef4444', bends: [] },
+        { id: 'w_led_sig_1', from: { component: 'arduino_uno', pin: '9' }, to: { component: 'led_heart_1', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_led_sig_2', from: { component: 'arduino_uno', pin: '10' }, to: { component: 'led_heart_2', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_led_sig_3', from: { component: 'arduino_uno', pin: '11' }, to: { component: 'led_heart_3', pin: 'a' }, color: '#ef4444', bends: [] },
+        { id: 'w_lh1_res', from: { component: 'led_heart_1', pin: 'c' }, to: { component: 'res_heart_1', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_lh2_res', from: { component: 'led_heart_2', pin: 'c' }, to: { component: 'res_heart_2', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_lh3_res', from: { component: 'led_heart_3', pin: 'c' }, to: { component: 'res_heart_3', pin: '1' }, color: '#10b981', bends: [] },
+        { id: 'w_rh1_gnd', from: { component: 'res_heart_1', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_8' }, color: '#0f172a', bends: [] },
+        { id: 'w_rh2_gnd', from: { component: 'res_heart_2', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_14' }, color: '#0f172a', bends: [] },
+        { id: 'w_rh3_gnd', from: { component: 'res_heart_3', pin: '2' }, to: { component: 'bb_main', pin: 'bottom_rail_neg_20' }, color: '#0f172a', bends: [] }
       );
     } else if (/ultrasonic|distance|hcsr04|hc-sr04|radar|sonar/i.test(slug) || /ultrasonic|distance|radar/i.test(title)) {
       // Ultrasonic Distance / Obstacle Detector System
@@ -1799,7 +2434,7 @@ export const Translator = {
 
     return {
       metadata: {
-        title: pageTitle || 'Tinkercad Circuit',
+        title: pageTitle || urlInfo.title || (urlInfo.slug ? urlInfo.slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Tinkercad Circuit'),
         source: 'Tinkercad',
         thingId: urlInfo.thingId,
         sharecode: urlInfo.sharecode,
@@ -1954,6 +2589,13 @@ export const Translator = {
    */
   exportStandaloneHTML(project, renderedSvgInner = '') {
     const jsonStr = JSON.stringify(project, null, 2);
+    let wokwiStr = '{}';
+    try {
+      wokwiStr = JSON.stringify(this.toWokwi(project), null, 2);
+    } catch (e) {
+      console.warn('Could not serialize Wokwi data for export', e);
+    }
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1966,6 +2608,7 @@ export const Translator = {
       --bg-surface: #0f172a;
       --border-subtle: #1e293b;
       --sky-primary: #38bdf8;
+      --sky-secondary: #0284c7;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
     }
@@ -2029,6 +2672,16 @@ export const Translator = {
       border-color: #38bdf8;
       color: #38bdf8;
     }
+    .btn-accent {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--sky-primary);
+    }
+    .btn-accent:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--sky-primary);
+      color: #ffffff;
+    }
     .btn-primary {
       background: #0284c7;
       border-color: #0369a1;
@@ -2047,10 +2700,54 @@ export const Translator = {
     #canvas-container.is-panning {
       cursor: grabbing;
     }
+    #canvas-container.drag-over {
+      outline: 3px dashed var(--sky-primary);
+      outline-offset: -12px;
+      background: rgba(56, 189, 248, 0.08);
+    }
     svg {
       width: 100%;
       height: 100%;
       display: block;
+    }
+    .canvas-component {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      transition: filter 0.15s ease;
+    }
+    .canvas-component:hover {
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
+    }
+    .wire {
+      pointer-events: stroke;
+      cursor: pointer;
+      transition: stroke-width 0.2s ease, filter 0.2s ease;
+    }
+    .wire:hover {
+      stroke-width: 5 !important;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+    }
+    .wire-terminal {
+      pointer-events: none;
+    }
+    .drop-hint {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 5;
     }
     .zoom-controls {
       position: absolute;
@@ -2064,6 +2761,7 @@ export const Translator = {
       border-radius: 8px;
       border: 1px solid #1e293b;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 5;
     }
     .zoom-btn {
       width: 32px;
@@ -2088,23 +2786,49 @@ export const Translator = {
 <body>
   <header>
     <div class="header-brand">
-      <strong>${project.metadata?.title || 'Circuit Layout'}</strong>
+      <strong id="circuit-title-display">${project.metadata?.title || 'Circuit Layout'}</strong>
       <span class="badge">Standalone Universal HTML</span>
     </div>
     <div class="header-actions">
+      <button class="btn btn-accent" id="btn-load-file" title="Open local diagram.json or circuit.json">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Open File
+      </button>
+      <input type="file" id="standalone-file-input" accept=".json,.brd,.xml" style="display: none;" />
+
+      <button class="btn" id="btn-download-wokwi" title="Export Wokwi diagram.json">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        Wokwi JSON
+      </button>
+
       <button class="btn" id="btn-download-json" title="Export Circuit JSON">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="16 18 22 12 16 6"/>
           <polyline points="8 6 2 12 8 18"/>
         </svg>
-        Download JSON
+        Circuit JSON
       </button>
+
       <button class="btn btn-primary" id="btn-reset-view" title="Reset Pan & Zoom">
         Reset View
       </button>
     </div>
   </header>
   <div id="canvas-container">
+    <div class="drop-hint">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Drop any diagram.json or circuit.json here
+    </div>
     <svg id="circuit-svg" viewBox="0 0 1400 900">
       <defs>
         <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -2128,6 +2852,9 @@ export const Translator = {
   </div>
   <script id="tcad-circuit-data" type="application/json">
 ${jsonStr}
+  </script>
+  <script id="wokwi-circuit-data" type="application/json">
+${wokwiStr}
   </script>
   <script>
     // Embedded Pan & Zoom Interactive Controls
@@ -2189,6 +2916,293 @@ ${jsonStr}
       updateTransform();
     });
 
+    // Dynamic Circuit Renderer (Active on file open / drag-and-drop or if static innerHTML is empty)
+    function renderDynamicSvg(data) {
+      if (!viewportGroup || !data) return;
+      viewportGroup.innerHTML = '';
+
+      const comps = data.components || [];
+      const parts = data.parts || [];
+      const conns = data.connections || [];
+
+      // Normalize items whether source is Native JSON or Wokwi diagram.json
+      const items = comps.length ? comps.map(c => ({
+        id: c.id,
+        type: (c.type || '').toLowerCase(),
+        x: Number(c.x || 0),
+        y: Number(c.y || 0),
+        rot: Number(c.rotation || 0),
+        label: c.properties?.label || c.name || c.id
+      })) : parts.map(p => ({
+        id: p.id,
+        type: (p.type || '').replace(/^wokwi-/, '').toLowerCase(),
+        x: Number(p.left || 0),
+        y: Number(p.top || 0),
+        rot: Number(p.rotate || 0),
+        label: p.attrs?.label || p.attrs?.text || p.id
+      }));
+
+      items.forEach(item => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', \`translate(\${item.x}, \${item.y}) rotate(\${item.rot})\`);
+        g.setAttribute('class', 'canvas-component');
+        g.setAttribute('data-id', item.id);
+
+        let bodySvg = '';
+        if (item.type.includes('arduino')) {
+          bodySvg = \`<rect width="260" height="180" rx="10" fill="#00878F" stroke="#005B60" stroke-width="2"/>
+            <text x="130" y="30" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">ARDUINO UNO</text>
+            <rect x="15" y="45" width="45" height="35" fill="#B0BEC5" rx="3"/>
+            <rect x="15" y="110" width="30" height="40" fill="#212121" rx="3"/>
+            <rect x="90" y="80" width="110" height="45" fill="#1e293b" rx="4" stroke="#475569"/>
+            <text x="145" y="107" fill="#38bdf8" font-size="10" font-family="monospace" text-anchor="middle">ATmega328P</text>\`;
+        } else if (item.type.includes('breadboard')) {
+          bodySvg = \`<rect width="480" height="165" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="20" y1="18" x2="460" y2="18" stroke="#EF4444" stroke-width="2"/>
+            <line x1="20" y1="36" x2="460" y2="36" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="20" y1="130" x2="460" y2="130" stroke="#EF4444" stroke-width="2"/>
+            <line x1="20" y1="148" x2="460" y2="148" stroke="#3B82F6" stroke-width="2"/>
+            <text x="240" y="88" fill="#64748B" font-size="12" font-weight="bold" font-family="monospace" text-anchor="middle">HALF BREADBOARD</text>\`;
+        } else if (item.type.includes('lcd')) {
+          bodySvg = \`<rect width="240" height="85" rx="6" fill="#14532D" stroke="#052E16" stroke-width="2"/>
+            <rect x="15" y="12" width="210" height="60" fill="#15803D" rx="4"/>
+            <rect x="22" y="18" width="196" height="48" fill="#86EFAC" rx="2"/>
+            <text x="120" y="47" fill="#052E16" font-family="monospace" font-weight="bold" font-size="12" text-anchor="middle">\${item.label || '16x2 LCD'}</text>\`;
+        } else if (item.type.includes('potentiometer')) {
+          bodySvg = \`<rect width="60" height="60" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
+            <circle cx="30" cy="30" r="20" fill="#334155" stroke="#64748B" stroke-width="1.5"/>
+            <line x1="30" y1="30" x2="44" y2="16" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+            <text x="30" y="55" fill="#94A3B8" font-size="8" text-anchor="middle">POT</text>\`;
+        } else if (item.type.includes('pushbutton')) {
+          bodySvg = \`<rect width="45" height="45" rx="6" fill="#334155" stroke="#475569" stroke-width="1.5"/>
+            <circle cx="22.5" cy="22.5" r="14" fill="#EF4444" stroke="#B91C1C" stroke-width="1.5"/>
+            <text x="22.5" y="41" fill="#94A3B8" font-size="7" text-anchor="middle">BTN</text>\`;
+        } else if (item.type.includes('led')) {
+          bodySvg = \`<circle cx="15" cy="15" r="12" fill="#EF4444" stroke="#B91C1C" stroke-width="1.5" filter="url(#glow-effect)"/>
+            <line x1="10" y1="27" x2="10" y2="45" stroke="#94A3B8" stroke-width="2.5"/>
+            <line x1="20" y1="27" x2="20" y2="48" stroke="#94A3B8" stroke-width="2.5"/>
+            <text x="15" y="32" fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle">LED</text>\`;
+        } else if (item.type.includes('neopixel-ring') || (item.type.includes('ring') && item.type.includes('neo'))) {
+          bodySvg = \`<circle cx="28" cy="28" r="26" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+            <circle cx="28" cy="28" r="12" fill="#090d16" stroke="#334155" stroke-width="1.5"/>
+            <circle cx="28" cy="7" r="2.5" fill="#ec4899"/>
+            <circle cx="49" cy="28" r="2.5" fill="#ec4899"/>
+            <circle cx="28" cy="49" r="2.5" fill="#ec4899"/>
+            <circle cx="7" cy="28" r="2.5" fill="#ec4899"/>
+            <text x="28" y="30" fill="#38bdf8" font-size="6" font-weight="bold" text-anchor="middle">RING</text>\`;
+        } else if (item.type.includes('neopixel') || item.type.includes('ws2812')) {
+          bodySvg = \`<rect width="110" height="22" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <circle cx="16" cy="11" r="3" fill="#38bdf8"/>
+            <circle cx="36" cy="11" r="3" fill="#38bdf8"/>
+            <circle cx="56" cy="11" r="3" fill="#38bdf8"/>
+            <circle cx="76" cy="11" r="3" fill="#38bdf8"/>
+            <circle cx="96" cy="11" r="3" fill="#38bdf8"/>
+            <text x="55" y="19" fill="#94a3b8" font-size="5" text-anchor="middle">NEO STRIP</text>\`;
+        } else if (item.type.includes('resistor')) {
+          bodySvg = \`<rect x="15" y="4" width="40" height="14" rx="4" fill="#D97706" stroke="#B45309" stroke-width="1.5"/>
+            <line x1="0" y1="11" x2="15" y2="11" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="55" y1="11" x2="70" y2="11" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="23" y1="4" x2="23" y2="18" stroke="#DC2626" stroke-width="2"/>
+            <line x1="31" y1="4" x2="31" y2="18" stroke="#2563EB" stroke-width="2"/>
+            <line x1="39" y1="4" x2="39" y2="18" stroke="#D97706" stroke-width="2"/>
+            <text x="35" y="27" fill="#94A3B8" font-size="7" text-anchor="middle">RES</text>\`;
+        } else if (item.type.includes('chip') || item.type.includes('dip-ic') || item.type.startsWith('74')) {
+          bodySvg = \`<rect width="140" height="50" rx="3" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+            <path d="M 2 18 A 6 6 0 0 1 2 32 Z" fill="#090d16"/>
+            <circle cx="14" cy="35" r="2.5" fill="#090d16"/>
+            <text x="70" y="28" fill="#f8fafc" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">\${item.label || '74HC IC'}</text>
+            <text x="70" y="40" fill="#94a3b8" font-family="sans-serif" font-size="7" text-anchor="middle">LOGIC IC</text>\`;
+        } else if (item.type.includes('switch')) {
+          bodySvg = \`<rect width="80" height="42" rx="3" fill="#b91c1c" stroke="#991b1b" stroke-width="1.5"/>
+            <rect x="8" y="10" width="64" height="22" rx="2" fill="#7f1d1d"/>
+            <text x="40" y="24" fill="#ffffff" font-family="sans-serif" font-size="8" font-weight="bold" text-anchor="middle">\${item.label || 'DIP SW'}</text>\`;
+        } else if (item.type.includes('battery') || item.type.includes('power')) {
+          bodySvg = \`<rect width="100" height="56" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <text x="50" y="32" fill="#38bdf8" font-family="sans-serif" font-size="10" font-weight="bold" text-anchor="middle">\${item.label || 'BATTERY'}</text>\`;
+        } else {
+          bodySvg = \`<rect width="70" height="40" rx="4" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/>
+            <text x="35" y="24" fill="#F8FAFC" font-size="9" text-anchor="middle">\${item.label || item.type}</text>\`;
+        }
+        g.innerHTML = bodySvg;
+        viewportGroup.appendChild(g);
+      });
+
+      // Render wires
+      conns.forEach((conn) => {
+        let fromCompId, toCompId, color = '#38bdf8';
+        if (Array.isArray(conn)) {
+          fromCompId = (conn[0] || '').split(':')[0];
+          toCompId = (conn[1] || '').split(':')[0];
+          color = conn[2] || '#38bdf8';
+        } else {
+          fromCompId = conn.from?.component;
+          toCompId = conn.to?.component;
+          color = conn.color || '#38bdf8';
+        }
+
+        const fromItem = items.find(it => it.id === fromCompId);
+        const toItem = items.find(it => it.id === toCompId);
+        if (!fromItem || !toItem) return;
+
+        const x1 = fromItem.x + 20;
+        const y1 = fromItem.y + 20;
+        const x2 = toItem.x + 20;
+        const y2 = toItem.y + 20;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const cx1 = x1 + dx * 0.3;
+        const cy1 = y1 + dy * 0.1 - 20;
+        const cx2 = x1 + dx * 0.7;
+        const cy2 = y2 - dy * 0.1 - 20;
+
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('d', \`M \${x1} \${y1} C \${cx1} \${cy1}, \${cx2} \${cy2}, \${x2} \${y2}\`);
+        p.setAttribute('stroke', color);
+        p.setAttribute('stroke-width', '3');
+        p.setAttribute('fill', 'none');
+        p.setAttribute('class', 'wire');
+        viewportGroup.appendChild(p);
+      });
+    }
+
+    // Helper: Parse EAGLE .brd XML in browser
+    function parseEagleXml(xmlStr, fileName = '') {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'application/xml');
+      const elements = Array.from(doc.getElementsByTagName('element'));
+      const signals = Array.from(doc.getElementsByTagName('signal'));
+
+      const rawComps = elements.map((el, i) => {
+        const name = el.getAttribute('name') || ('COMP_' + (i + 1));
+        const pkg = (el.getAttribute('package') || '').toLowerCase();
+        const val = (el.getAttribute('value') || '').toLowerCase();
+        const rx = parseFloat(el.getAttribute('x') || '0');
+        const ry = parseFloat(el.getAttribute('y') || '0');
+        let type = 'generic-component';
+        if (/74hc|740|pdip.*14|dip/i.test(pkg) || /74hc|740/i.test(val)) type = 'dip-ic';
+        else if (/spst|switch|dip.*sw/i.test(pkg) || /switch/i.test(val)) type = 'dip-switch-4';
+        else if (/led/i.test(pkg) || /led|lightbulb/i.test(val) || /^d\d/i.test(name)) type = 'led';
+        else if (/res/i.test(pkg) || /^r\d/i.test(name)) type = 'resistor';
+        else if (/battery|power/i.test(pkg) || /^p\d/i.test(name)) type = 'power-supply';
+
+        return { id: name.toLowerCase(), origName: name, type, x: rx, y: ry, label: el.getAttribute('value') || name };
+      });
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      rawComps.forEach(c => {
+        minX = Math.min(minX, c.x); minY = Math.min(minY, c.y);
+        maxX = Math.max(maxX, c.x); maxY = Math.max(maxY, c.y);
+      });
+      const spanX = maxX - minX;
+      const spanY = maxY - minY;
+      const scale = (spanX > 0 && spanX < 350 && spanY < 350) ? 3.8 : 1.0;
+
+      const components = rawComps.map((c, i) => ({
+        id: c.id,
+        type: c.type,
+        x: isFinite(minX) ? Math.round(80 + (c.x - minX) * scale) : 80 + (i % 4) * 160,
+        y: isFinite(maxY) ? Math.round(80 + (maxY - c.y) * scale) : 80 + Math.floor(i / 4) * 160,
+        properties: { label: c.label }
+      }));
+
+      const connections = [];
+      signals.forEach(sig => {
+        const refs = Array.from(sig.getElementsByTagName('contactref'));
+        for (let i = 0; i < refs.length - 1; i++) {
+          connections.push({
+            id: 'wire_' + connections.length,
+            from: { component: (refs[i].getAttribute('element') || '').toLowerCase(), pin: refs[i].getAttribute('pad') },
+            to: { component: (refs[i + 1].getAttribute('element') || '').toLowerCase(), pin: refs[i + 1].getAttribute('pad') },
+            color: sig.getAttribute('name')?.includes('+') ? '#ef4444' : sig.getAttribute('name')?.includes('-') ? '#3b82f6' : '#10b981'
+          });
+        }
+      });
+
+      const title = fileName.replace(/\.(brd|xml)$/i, '') || 'Imported EAGLE Circuit';
+      return { metadata: { title, format: 'EAGLE_BRD' }, components, connections };
+    }
+
+    // Process imported/dropped JSON content
+    function loadCircuitJson(text, fileName = '') {
+      try {
+        const trimmed = (text || '').trim();
+        let parsed;
+        if (trimmed.startsWith('<?xml') || trimmed.startsWith('<eagle') || trimmed.includes('<board>') || trimmed.includes('<signals>') || fileName.endsWith('.brd') || fileName.endsWith('.xml')) {
+          parsed = parseEagleXml(trimmed, fileName);
+        } else {
+          parsed = JSON.parse(text);
+        }
+
+        let title = fileName.replace(/\.(json|brd|xml)$/i, '') || 'Imported Circuit';
+        if (parsed.metadata?.title) title = parsed.metadata.title;
+        else if (parsed.title) title = parsed.title;
+        else if (parsed.name) title = parsed.name;
+
+        document.getElementById('circuit-title-display').textContent = title;
+        document.getElementById('tcad-circuit-data').textContent = JSON.stringify(parsed, null, 2);
+        
+        if (parsed.parts) {
+          document.getElementById('wokwi-circuit-data').textContent = JSON.stringify(parsed, null, 2);
+        }
+
+        renderDynamicSvg(parsed);
+        panX = 0; panY = 0; zoom = 1.0;
+        updateTransform();
+      } catch (err) {
+        alert('Could not load circuit file: ' + err.message);
+      }
+    }
+
+    // Fallback: If viewportGroup is empty upon load, render from embedded JSON
+    if (!viewportGroup.children.length) {
+      try {
+        const initialData = JSON.parse(document.getElementById('tcad-circuit-data').textContent);
+        renderDynamicSvg(initialData);
+      } catch (e) {}
+    }
+
+    // Standalone File Picker
+    const fileInput = document.getElementById('standalone-file-input');
+    const btnLoadFile = document.getElementById('btn-load-file');
+    if (btnLoadFile && fileInput) {
+      btnLoadFile.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => loadCircuitJson(evt.target.result, file.name);
+        reader.readAsText(file);
+      });
+    }
+
+    // Drag-and-Drop file loading on container
+    container.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      container.classList.add('drag-over');
+    });
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      container.classList.add('drag-over');
+    });
+    container.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget && container.contains(e.relatedTarget)) return;
+      container.classList.remove('drag-over');
+    });
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      container.classList.remove('drag-over');
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => loadCircuitJson(evt.target.result, file.name);
+        reader.readAsText(file);
+      }
+    });
+
+    // Download handlers
     document.getElementById('btn-download-json').addEventListener('click', () => {
       const dataStr = document.getElementById('tcad-circuit-data').textContent;
       const blob = new Blob([dataStr], { type: 'application/json' });
@@ -2196,6 +3210,18 @@ ${jsonStr}
       const a = document.createElement('a');
       a.href = url;
       a.download = 'circuit.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-download-wokwi').addEventListener('click', () => {
+      const wokwiEl = document.getElementById('wokwi-circuit-data');
+      const dataStr = wokwiEl ? wokwiEl.textContent : document.getElementById('tcad-circuit-data').textContent;
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diagram.json';
       a.click();
       URL.revokeObjectURL(url);
     });

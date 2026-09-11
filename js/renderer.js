@@ -326,6 +326,54 @@ export class CircuitRenderer {
     this.updateTransform();
   }
 
+  fitToContent(project = this.currentProject, padding = 60) {
+    if (!project || !project.components || project.components.length === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    project.components.forEach((comp) => {
+      const cx = comp.x || 0;
+      const cy = comp.y || 0;
+      let w = 80, h = 80;
+      if (comp.type.startsWith('arduino-uno') || comp.type.startsWith('arduino-mega')) {
+        w = 320; h = 240;
+      } else if (comp.type === 'breadboard-full') {
+        w = 680; h = 240;
+      } else if (comp.type === 'breadboard-half') {
+        w = 560; h = 240;
+      } else if (comp.type === 'lcd1602-i2c') {
+        w = 260; h = 100;
+      } else if (comp.type === 'neopixel-strip') {
+        w = 140; h = 28;
+      } else if (comp.type === 'neopixel-ring') {
+        w = 76; h = 76;
+      }
+      minX = Math.min(minX, cx);
+      minY = Math.min(minY, cy);
+      maxX = Math.max(maxX, cx + w);
+      maxY = Math.max(maxY, cy + h);
+    });
+
+    if (!isFinite(minX)) return;
+
+    const contentW = maxX - minX + padding * 2;
+    const contentH = maxY - minY + padding * 2;
+
+    const svgRect = this.svg && typeof this.svg.getBoundingClientRect === 'function'
+      ? this.svg.getBoundingClientRect()
+      : { width: 1000, height: 700 };
+    const containerW = svgRect.width > 100 ? svgRect.width : 1000;
+    const containerH = svgRect.height > 100 ? svgRect.height : 700;
+
+    const scaleX = containerW / contentW;
+    const scaleY = containerH / contentH;
+    const fitZoom = Math.max(0.2, Math.min(1.4, Math.min(scaleX, scaleY)));
+
+    this.zoom = fitZoom;
+    this.panX = Math.round((containerW - (maxX + minX) * fitZoom) / 2);
+    this.panY = Math.round((containerH - (maxY + minY) * fitZoom) / 2);
+    this.updateTransform();
+  }
+
   render(project) {
     if (!this.viewportGroup || !project) return;
     this.currentProject = project;
@@ -364,7 +412,7 @@ export class CircuitRenderer {
         compGroup.innerHTML = this.getLedSVG(comp);
       } else if (comp.type === 'rgb-led') {
         compGroup.innerHTML = this.getRgbLedSVG(comp);
-      } else if (comp.type === 'dip-ic' || comp.type === 'chip-74hc32' || comp.type === 'chip-74hc04' || comp.type === 'chip-7408' || comp.type === 'chip-7400' || comp.type === 'chip-555') {
+      } else if (comp.type === 'dip-ic' || comp.type.startsWith('chip-')) {
         compGroup.innerHTML = this.getDipIcSVG(comp);
       } else if (comp.type === 'power-supply') {
         compGroup.innerHTML = this.getPowerSupplySVG(comp);
@@ -404,6 +452,10 @@ export class CircuitRenderer {
         compGroup.innerHTML = this.get7SegmentSVG(comp);
       } else if (comp.type === 'oled-ssd1306') {
         compGroup.innerHTML = this.getOledDisplaySVG(comp);
+      } else if (comp.type === 'neopixel-strip') {
+        compGroup.innerHTML = this.getNeopixelStripSVG(comp);
+      } else if (comp.type === 'neopixel-ring') {
+        compGroup.innerHTML = this.getNeopixelRingSVG(comp);
       } else {
         compGroup.innerHTML = this.getGenericComponentSVG(comp);
       }
@@ -479,8 +531,15 @@ export class CircuitRenderer {
         cy1 = loopY;
         cx2 = endX;
         cy2 = loopY;
-      } else if (conn.id === 'wire_comm_data' || (Math.abs(dx) > 250 && startY < 320 && endY < 320)) {
-        // Horizontal inter-board bridge (communication line connecting Arduinos)
+      } else if (conn.id === 'wire_comm_data' || (fromComp && toComp && fromComp.type.startsWith('arduino') && toComp.type.startsWith('arduino'))) {
+        // Horizontal/Arched inter-board bridge (communication line connecting multiple Arduinos)
+        const offset = ((idx * 23) % 60) - 30;
+        const archY = Math.min(startY, endY) - 50 + offset;
+        cx1 = startX + dx * 0.2;
+        cy1 = archY;
+        cx2 = startX + dx * 0.8;
+        cy2 = archY;
+      } else if (Math.abs(dx) > 250 && startY < 320 && endY < 320) {
         const archY = Math.min(startY, endY) - 50;
         cx1 = startX;
         cy1 = archY;
@@ -563,336 +622,371 @@ export class CircuitRenderer {
     const py = comp.y || 0;
     if (!pinName) return { x: px + 30, y: py + 30 };
 
-    const pinStr = String(pinName).toLowerCase();
+    const pinStr = String(pinName).toLowerCase().trim();
+
+    // Helper to apply component rotation around its local origin (0, 0)
+    const applyRot = (lx, ly) => {
+      const rot = comp.rotation || 0;
+      if (!rot) {
+        return { x: Math.round(px + lx), y: Math.round(py + ly) };
+      }
+      const rad = (rot * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const rx = lx * cos - ly * sin;
+      const ry = lx * sin + ly * cos;
+      return {
+        x: Math.round((px + rx) * 10) / 10,
+        y: Math.round((py + ry) * 10) / 10
+      };
+    };
 
     // 1. Breadboard Pin mapping
     if (comp.type === 'breadboard-half') {
       const colMatch = pinStr.match(/\d+/);
       const col = colMatch ? Math.min(30, Math.max(1, parseInt(colMatch[0], 10))) : 1;
-      const colX = px + 28 + (col - 1) * 17.5;
+      const colX = 28 + (col - 1) * 17.5;
 
       if (pinStr.includes('top_rail_neg') || pinStr.startsWith('tn.')) {
-        return { x: colX, y: py + 22 };
+        return applyRot(colX, 22);
       }
       if (pinStr.includes('top_rail_pos') || pinStr.startsWith('tp.')) {
-        return { x: colX, y: py + 36 };
+        return applyRot(colX, 36);
       }
       if (pinStr.includes('bottom_rail_neg') || pinStr.startsWith('bn.')) {
-        return { x: colX, y: py + 215 };
+        return applyRot(colX, 215);
       }
       if (pinStr.includes('bottom_rail_pos') || pinStr.startsWith('bp.')) {
-        return { x: colX, y: py + 229 };
+        return applyRot(colX, 229);
       }
-      return { x: colX, y: py + 125 };
+      return applyRot(colX, 125);
     }
 
-    // 2. Power Supply mapping
-    if (comp.type === 'power-supply') {
-      if (pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 105, y: py + 128 };
-      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr.includes('gnd')) return { x: px + 138, y: py + 128 };
-      return { x: px + 120, y: py + 128 };
+    // 2. Power Supply & Generic Battery mapping
+    if (comp.type === 'power-supply' || comp.type === 'battery-generic' || comp.type === 'generic-power') {
+      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return applyRot(105, 128);
+      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr.includes('gnd') || pinStr === '2') return applyRot(138, 128);
+      return applyRot(120, 128);
     }
 
-    // 3. DIP Switch mapping (4-position)
+    // 3. DIP Switch mapping (4, 6, or 8-position)
     if (comp.type === 'dip-switch-4') {
       const numMatch = pinStr.match(/\d+/);
-      const num = numMatch ? Math.min(4, Math.max(1, parseInt(numMatch[0], 10))) : 1;
-      const swX = px + 16 + (num - 1) * 16;
-      if (pinStr.includes('a') || pinStr.includes('top')) return { x: swX, y: py + 6 };
-      return { x: swX, y: py + 84 };
+      const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+      if (num >= 5 && num <= 8) {
+        // Top row pins 8..5 opposite 1..4
+        const swX = 16 + (8 - num) * 16;
+        return applyRot(swX, 6);
+      }
+      const swX = 16 + (Math.min(4, Math.max(1, num)) - 1) * 16;
+      if (pinStr.includes('a') || pinStr.includes('top') || pinStr.includes('in')) return applyRot(swX, 6);
+      return applyRot(swX, 84);
     }
 
-    // 4. DIP-14 IC mapping (74HC32, 74HC04, etc.)
-    if (comp.type === 'dip-ic' || comp.type === 'chip-74hc32' || comp.type === 'chip-74hc04') {
+    // 4. DIP-14 IC mapping (all 74HC series chips, 555, and generic dip-ic)
+    if (comp.type === 'dip-ic' || comp.type.startsWith('chip-')) {
       const pinNum = parseInt(pinStr, 10);
       if (!isNaN(pinNum) && pinNum >= 1 && pinNum <= 14) {
         if (pinNum <= 7) {
           // Bottom row (Pins 1-7)
-          return { x: px + 18 + (pinNum - 1) * 20, y: py + 52 };
+          return applyRot(18 + (pinNum - 1) * 20, 52);
         } else {
           // Top row (Pins 8-14, from right to left)
-          return { x: px + 18 + (14 - pinNum) * 20, y: py + 2 };
+          return applyRot(18 + (14 - pinNum) * 20, 2);
         }
       }
-      if (pinStr.includes('vcc')) return { x: px + 18, y: py + 2 }; // Pin 14
-      if (pinStr.includes('gnd')) return { x: px + 138, y: py + 52 }; // Pin 7
-      return { x: px + 60, y: py + 26 };
+      if (pinStr.includes('vcc')) return applyRot(18, 2); // Pin 14
+      if (pinStr.includes('gnd')) return applyRot(138, 52); // Pin 7
+      return applyRot(60, 26);
     }
 
     // 5. LED mapping
     if (comp.type === 'led') {
-      if (pinStr.includes('a') || pinStr.includes('anode')) return { x: px + 10, y: py + 38 };
-      if (pinStr.includes('c') || pinStr.includes('cathode')) return { x: px + 22, y: py + 38 };
-      return { x: px + 16, y: py + 38 };
+      if (pinStr === '1' || pinStr.includes('a') || pinStr.includes('anode') || pinStr.includes('+')) return applyRot(10, 38);
+      if (pinStr === '2' || pinStr.includes('c') || pinStr.includes('cathode') || pinStr.includes('k') || pinStr.includes('-')) return applyRot(22, 38);
+      return applyRot(16, 38);
     }
 
-    // 6. Resistor mapping (with rotation support)
+    // 6. Resistor mapping
     if (comp.type === 'resistor') {
-      if (comp.rotation === 90) {
-        if (pinStr === '1') return { x: px + 12, y: py + 4 };
-        if (pinStr === '2') return { x: px + 12, y: py + 76 };
-        return { x: px + 12, y: py + 40 };
-      }
-      if (pinStr === '1') return { x: px + 4, y: py + 12 };
-      if (pinStr === '2') return { x: px + 76, y: py + 12 };
-      return { x: px + 40, y: py + 12 };
+      if (pinStr === '1') return applyRot(4, 12);
+      if (pinStr === '2') return applyRot(76, 12);
+      return applyRot(40, 12);
     }
 
     // 7. Arduino Uno Pin Mapping (Digital, Power, and Analog headers)
     if (comp.type === 'arduino-uno') {
       // Digital Header pins: AREF, GND, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
-      if (pinStr === 'aref') return { x: px + 74, y: py + 14 };
-      if (pinStr === 'gnd' || pinStr === 'gnd.3') return { x: px + 86, y: py + 14 };
-      if (pinStr === '13') return { x: px + 98, y: py + 14 };
-      if (pinStr === '12') return { x: px + 110, y: py + 14 };
-      if (pinStr === '11') return { x: px + 122, y: py + 14 };
-      if (pinStr === '10') return { x: px + 134, y: py + 14 };
-      if (pinStr === '9') return { x: px + 146, y: py + 14 };
-      if (pinStr === '8') return { x: px + 158, y: py + 14 };
-      if (pinStr === '7') return { x: px + 178, y: py + 14 };
-      if (pinStr === '6') return { x: px + 190, y: py + 14 };
-      if (pinStr === '5') return { x: px + 202, y: py + 14 };
-      if (pinStr === '4') return { x: px + 214, y: py + 14 };
-      if (pinStr === '3') return { x: px + 226, y: py + 14 };
-      if (pinStr === '2') return { x: px + 238, y: py + 14 };
-      if (pinStr === '1' || pinStr === 'tx') return { x: px + 250, y: py + 14 };
-      if (pinStr === '0' || pinStr === 'rx') return { x: px + 262, y: py + 14 };
+      if (pinStr === 'aref') return applyRot(74, 14);
+      if (pinStr === 'gnd' || pinStr === 'gnd.3') return applyRot(86, 14);
+      if (pinStr === '13') return applyRot(98, 14);
+      if (pinStr === '12') return applyRot(110, 14);
+      if (pinStr === '11') return applyRot(122, 14);
+      if (pinStr === '10') return applyRot(134, 14);
+      if (pinStr === '9') return applyRot(146, 14);
+      if (pinStr === '8') return applyRot(158, 14);
+      if (pinStr === '7') return applyRot(178, 14);
+      if (pinStr === '6') return applyRot(190, 14);
+      if (pinStr === '5') return applyRot(202, 14);
+      if (pinStr === '4') return applyRot(214, 14);
+      if (pinStr === '3') return applyRot(226, 14);
+      if (pinStr === '2') return applyRot(238, 14);
+      if (pinStr === '1' || pinStr === 'tx') return applyRot(250, 14);
+      if (pinStr === '0' || pinStr === 'rx') return applyRot(262, 14);
 
       // Power Header pins: IOREF, RESET, 3.3V, 5V, GND.1, GND.2, VIN
-      if (pinStr === 'ioref') return { x: px + 118, y: py + 182 };
-      if (pinStr === 'reset') return { x: px + 130, y: py + 182 };
-      if (pinStr.includes('3.3') || pinStr.includes('3v3')) return { x: px + 142, y: py + 182 };
-      if (pinStr === '5v') return { x: px + 154, y: py + 182 };
-      if (pinStr === 'gnd.1') return { x: px + 166, y: py + 182 };
-      if (pinStr === 'gnd.2') return { x: px + 178, y: py + 182 };
-      if (pinStr === 'vin') return { x: px + 190, y: py + 182 };
+      if (pinStr === 'ioref') return applyRot(118, 182);
+      if (pinStr === 'reset') return applyRot(130, 182);
+      if (pinStr.includes('3.3') || pinStr.includes('3v3')) return applyRot(142, 182);
+      if (pinStr === '5v') return applyRot(154, 182);
+      if (pinStr === 'gnd.1') return applyRot(166, 182);
+      if (pinStr === 'gnd.2') return applyRot(178, 182);
+      if (pinStr === 'vin') return applyRot(190, 182);
 
       // Analog Header pins: A0 - A5
-      if (pinStr === 'a0') return { x: px + 212, y: py + 182 };
-      if (pinStr === 'a1') return { x: px + 224, y: py + 182 };
-      if (pinStr === 'a2') return { x: px + 236, y: py + 182 };
-      if (pinStr === 'a3') return { x: px + 248, y: py + 182 };
-      if (pinStr === 'a4') return { x: px + 260, y: py + 182 };
-      if (pinStr === 'a5') return { x: px + 272, y: py + 182 };
+      if (pinStr === 'a0') return applyRot(212, 182);
+      if (pinStr === 'a1') return applyRot(224, 182);
+      if (pinStr === 'a2') return applyRot(236, 182);
+      if (pinStr === 'a3') return applyRot(248, 182);
+      if (pinStr === 'a4') return applyRot(260, 182);
+      if (pinStr === 'a5') return applyRot(272, 182);
 
-      return { x: px + 150, y: py + 100 };
+      return applyRot(150, 100);
     }
 
     // 8. Pushbutton mapping (4 corner terminals)
     if (comp.type === 'pushbutton') {
-      if (pinStr === '1a') return { x: px + 8, y: py + 8 };
-      if (pinStr === '1b') return { x: px + 8, y: py + 28 };
-      if (pinStr === '2a') return { x: px + 28, y: py + 8 };
-      if (pinStr === '2b') return { x: px + 28, y: py + 28 };
-      return { x: px + 18, y: py + 18 };
+      if (pinStr === '1a' || pinStr === '1.l') return applyRot(8, 8);
+      if (pinStr === '1b' || pinStr === '1.r') return applyRot(8, 28);
+      if (pinStr === '2a' || pinStr === '2.l') return applyRot(28, 8);
+      if (pinStr === '2b' || pinStr === '2.r') return applyRot(28, 28);
+      return applyRot(18, 18);
     }
 
     // 9. Multimeter mapping (test leads)
     if (comp.type === 'multimeter') {
-      if (pinStr.includes('com') || pinStr.includes('-') || pinStr.includes('neg')) return { x: px + 65, y: py + 52 };
-      if (pinStr.includes('v') || pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 85, y: py + 52 };
-      return { x: px + 75, y: py + 52 };
+      if (pinStr.includes('com') || pinStr.includes('-') || pinStr.includes('neg')) return applyRot(65, 52);
+      if (pinStr.includes('v') || pinStr.includes('+') || pinStr.includes('pos')) return applyRot(85, 52);
+      return applyRot(75, 52);
     }
 
     // 10. Potentiometer mapping (3 terminals)
     if (comp.type === 'potentiometer') {
-      if (pinStr === '1') return { x: px + 10, y: py + 48 };
-      if (pinStr === '2' || pinStr === 'wiper') return { x: px + 24, y: py + 48 };
-      if (pinStr === '3') return { x: px + 38, y: py + 48 };
-      return { x: px + 24, y: py + 48 };
+      if (pinStr === '1') return applyRot(10, 48);
+      if (pinStr === '2' || pinStr === 'wiper') return applyRot(24, 48);
+      if (pinStr === '3') return applyRot(38, 48);
+      return applyRot(24, 48);
     }
 
     // 11. 9V Battery mapping (2 snap terminals)
     if (comp.type === 'battery-9v') {
-      if (pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 22, y: py + 14 };
-      if (pinStr.includes('-') || pinStr.includes('neg')) return { x: px + 58, y: py + 14 };
-      return { x: px + 40, y: py + 14 };
+      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return applyRot(22, 14);
+      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr === '2') return applyRot(58, 14);
+      return applyRot(40, 14);
     }
 
     // 12. Piezo Buzzer mapping (2 terminals)
     if (comp.type === 'buzzer') {
-      if (pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 18, y: py + 54 };
-      if (pinStr.includes('-') || pinStr.includes('neg')) return { x: px + 46, y: py + 54 };
-      return { x: px + 32, y: py + 54 };
+      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return applyRot(18, 54);
+      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr === '2') return applyRot(46, 54);
+      return applyRot(32, 54);
     }
 
     // 13. 16x2 I2C LCD mapping (4 backpack pins on left)
     if (comp.type === 'lcd1602-i2c') {
-      if (pinStr.includes('gnd')) return { x: px + 4, y: py + 22 };
-      if (pinStr.includes('vcc') || pinStr.includes('5v') || pinStr.includes('v+')) return { x: px + 4, y: py + 38 };
-      if (pinStr.includes('sda')) return { x: px + 4, y: py + 54 };
-      if (pinStr.includes('scl')) return { x: px + 4, y: py + 70 };
-      return { x: px + 4, y: py + 46 };
+      if (pinStr.includes('gnd')) return applyRot(4, 22);
+      if (pinStr.includes('vcc') || pinStr.includes('5v') || pinStr.includes('v+')) return applyRot(4, 38);
+      if (pinStr.includes('sda')) return applyRot(4, 54);
+      if (pinStr.includes('scl')) return applyRot(4, 70);
+      return applyRot(4, 46);
     }
 
     // 14. Full Breadboard (63 columns)
     if (comp.type === 'breadboard-full') {
       const colMatch = pinStr.match(/\d+/);
       const col = colMatch ? Math.min(63, Math.max(1, parseInt(colMatch[0], 10))) : 1;
-      const colX = px + 22 + (col - 1) * 10;
-      if (pinStr.includes('top_rail_neg') || pinStr.startsWith('tn.')) return { x: colX, y: py + 20 };
-      if (pinStr.includes('top_rail_pos') || pinStr.startsWith('tp.')) return { x: colX, y: py + 34 };
-      if (pinStr.includes('bottom_rail_neg') || pinStr.startsWith('bn.')) return { x: colX, y: py + 215 };
-      if (pinStr.includes('bottom_rail_pos') || pinStr.startsWith('bp.')) return { x: colX, y: py + 229 };
-      return { x: colX, y: py + 125 };
+      const colX = 22 + (col - 1) * 10;
+      if (pinStr.includes('top_rail_neg') || pinStr.startsWith('tn.')) return applyRot(colX, 20);
+      if (pinStr.includes('top_rail_pos') || pinStr.startsWith('tp.')) return applyRot(colX, 34);
+      if (pinStr.includes('bottom_rail_neg') || pinStr.startsWith('bn.')) return applyRot(colX, 215);
+      if (pinStr.includes('bottom_rail_pos') || pinStr.startsWith('bp.')) return applyRot(colX, 229);
+      return applyRot(colX, 125);
     }
 
     // 15. Mini Breadboard (17 columns)
     if (comp.type === 'breadboard-mini') {
       const colMatch = pinStr.match(/\d+/);
       const col = colMatch ? Math.min(17, Math.max(1, parseInt(colMatch[0], 10))) : 1;
-      const colX = px + 20 + (col - 1) * 11;
-      return { x: colX, y: py + 85 };
+      const colX = 20 + (col - 1) * 11;
+      return applyRot(colX, 85);
     }
 
     // 16. TMP36 Temperature Sensor (1=VCC, 2=Vout, 3=GND)
     if (comp.type === 'sensor-tmp36') {
-      if (pinStr === '1' || pinStr.includes('vcc') || pinStr.includes('+')) return { x: px + 8, y: py + 36 };
-      if (pinStr === '2' || pinStr.includes('out') || pinStr.includes('sig')) return { x: px + 18, y: py + 36 };
-      if (pinStr === '3' || pinStr.includes('gnd') || pinStr.includes('-')) return { x: px + 28, y: py + 36 };
-      return { x: px + 18, y: py + 36 };
+      if (pinStr === '1' || pinStr.includes('vcc') || pinStr.includes('+')) return applyRot(8, 36);
+      if (pinStr === '2' || pinStr.includes('out') || pinStr.includes('sig')) return applyRot(18, 36);
+      if (pinStr === '3' || pinStr.includes('gnd') || pinStr.includes('-')) return applyRot(28, 36);
+      return applyRot(18, 36);
     }
 
     // 17. PIR Motion Sensor (GND, VCC, OUT)
     if (comp.type === 'pir-sensor') {
-      if (pinStr.includes('gnd') || pinStr.includes('-')) return { x: px + 45, y: py + 104 };
-      if (pinStr.includes('out') || pinStr.includes('sig') || pinStr === '2') return { x: px + 55, y: py + 104 };
-      if (pinStr.includes('vcc') || pinStr.includes('+') || pinStr === '1') return { x: px + 65, y: py + 104 };
-      return { x: px + 55, y: py + 104 };
+      if (pinStr.includes('gnd') || pinStr.includes('-')) return applyRot(45, 104);
+      if (pinStr.includes('out') || pinStr.includes('sig') || pinStr === '2') return applyRot(55, 104);
+      if (pinStr.includes('vcc') || pinStr.includes('+') || pinStr === '1') return applyRot(65, 104);
+      return applyRot(55, 104);
     }
 
     // 18. HC-SR04 Ultrasonic Sensor (VCC, TRIG, ECHO, GND)
     if (comp.type === 'ultrasonic-hcsr04') {
-      if (pinStr.includes('vcc') || pinStr === '1') return { x: px + 50, y: py + 64 };
-      if (pinStr.includes('trig') || pinStr === '2') return { x: px + 60, y: py + 64 };
-      if (pinStr.includes('echo') || pinStr === '3') return { x: px + 70, y: py + 64 };
-      if (pinStr.includes('gnd') || pinStr === '4') return { x: px + 80, y: py + 64 };
-      return { x: px + 65, y: py + 64 };
+      if (pinStr.includes('vcc') || pinStr === '1') return applyRot(50, 64);
+      if (pinStr.includes('trig') || pinStr === '2') return applyRot(60, 64);
+      if (pinStr.includes('echo') || pinStr === '3') return applyRot(70, 64);
+      if (pinStr.includes('gnd') || pinStr === '4') return applyRot(80, 64);
+      return applyRot(65, 64);
     }
 
     // 19. Photoresistor (LDR)
     if (comp.type === 'photoresistor') {
-      if (pinStr === '1') return { x: px + 8, y: py + 32 };
-      if (pinStr === '2') return { x: px + 24, y: py + 32 };
-      return { x: px + 16, y: py + 32 };
+      if (pinStr === '1') return applyRot(8, 32);
+      if (pinStr === '2') return applyRot(24, 32);
+      return applyRot(16, 32);
     }
 
     // 20. DC Hobby Motor (+, -)
     if (comp.type === 'dc-motor') {
-      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return { x: px + 40, y: py + 22 };
-      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr === '2') return { x: px + 60, y: py + 22 };
-      return { x: px + 50, y: py + 22 };
+      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return applyRot(40, 22);
+      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr === '2') return applyRot(60, 22);
+      return applyRot(50, 22);
     }
 
     // 21. SG90 Micro Servo (GND, VCC, PWM)
     if (comp.type === 'servo') {
-      if (pinStr.includes('gnd') || pinStr.includes('-')) return { x: px + 20, y: py + 72 };
-      if (pinStr.includes('vcc') || pinStr.includes('+') || pinStr.includes('5v')) return { x: px + 28, y: py + 72 };
-      if (pinStr.includes('pwm') || pinStr.includes('sig')) return { x: px + 36, y: py + 72 };
-      return { x: px + 28, y: py + 72 };
+      if (pinStr.includes('gnd') || pinStr.includes('-')) return applyRot(20, 72);
+      if (pinStr.includes('vcc') || pinStr.includes('+') || pinStr.includes('5v')) return applyRot(28, 72);
+      if (pinStr.includes('pwm') || pinStr.includes('sig')) return applyRot(36, 72);
+      return applyRot(28, 72);
     }
 
     // 22. 5V Relay Module (VCC, GND, IN / COM, NO, NC)
     if (comp.type === 'relay') {
-      if (pinStr.includes('vcc')) return { x: px + 14, y: py + 20 };
-      if (pinStr.includes('gnd')) return { x: px + 14, y: py + 40 };
-      if (pinStr.includes('in')) return { x: px + 14, y: py + 60 };
-      if (pinStr.includes('no')) return { x: px + 96, y: py + 20 };
-      if (pinStr.includes('com')) return { x: px + 96, y: py + 40 };
-      if (pinStr.includes('nc')) return { x: px + 96, y: py + 60 };
-      return { x: px + 55, y: py + 40 };
+      if (pinStr.includes('vcc')) return applyRot(14, 20);
+      if (pinStr.includes('gnd')) return applyRot(14, 40);
+      if (pinStr.includes('in')) return applyRot(14, 60);
+      if (pinStr.includes('no')) return applyRot(96, 20);
+      if (pinStr.includes('com')) return applyRot(96, 40);
+      if (pinStr.includes('nc')) return applyRot(96, 60);
+      return applyRot(55, 40);
     }
 
     // 23. Flyback / Rectifier Diode (1N4001)
     if (comp.type === 'diode') {
-      if (pinStr.includes('anode') || pinStr === '1' || pinStr.includes('+')) return { x: px + 6, y: py + 10 };
-      if (pinStr.includes('cathode') || pinStr === '2' || pinStr.includes('-')) return { x: px + 64, y: py + 10 };
-      return { x: px + 35, y: py + 10 };
+      if (pinStr.includes('anode') || pinStr === '1' || pinStr.includes('+')) return applyRot(6, 10);
+      if (pinStr.includes('cathode') || pinStr === '2' || pinStr.includes('-')) return applyRot(64, 10);
+      return applyRot(35, 10);
     }
 
     // 24. TIP120 Darlington Power Transistor (B, C, E)
     if (comp.type === 'transistor-tip120') {
-      if (pinStr.includes('base') || pinStr === 'b' || pinStr === '1') return { x: px + 12, y: py + 64 };
-      if (pinStr.includes('collector') || pinStr === 'c' || pinStr === '2') return { x: px + 24, y: py + 64 };
-      if (pinStr.includes('emitter') || pinStr === 'e' || pinStr === '3') return { x: px + 36, y: py + 64 };
-      return { x: px + 24, y: py + 64 };
+      if (pinStr.includes('base') || pinStr === 'b' || pinStr === '1') return applyRot(12, 64);
+      if (pinStr.includes('collector') || pinStr === 'c' || pinStr === '2') return applyRot(24, 64);
+      if (pinStr.includes('emitter') || pinStr === 'e' || pinStr === '3') return applyRot(36, 64);
+      return applyRot(24, 64);
     }
 
     // 25. Capacitor (Ceramic / Electrolytic)
     if (comp.type === 'capacitor') {
-      if (pinStr === '1' || pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 10, y: py + 30 };
-      if (pinStr === '2' || pinStr.includes('-') || pinStr.includes('neg')) return { x: px + 26, y: py + 30 };
-      return { x: px + 18, y: py + 30 };
+      if (pinStr === '1' || pinStr.includes('+') || pinStr.includes('pos')) return applyRot(10, 30);
+      if (pinStr === '2' || pinStr.includes('-') || pinStr.includes('neg')) return applyRot(26, 30);
+      return applyRot(18, 30);
     }
 
     // 26. RGB LED (R, COM, G, B)
     if (comp.type === 'rgb-led') {
-      if (pinStr.includes('r') || pinStr === '1') return { x: px + 8, y: py + 32 };
-      if (pinStr.includes('com') || pinStr.includes('cat') || pinStr === '2') return { x: px + 15, y: py + 32 };
-      if (pinStr.includes('g') || pinStr === '3') return { x: px + 22, y: py + 32 };
-      if (pinStr.includes('b') || pinStr === '4') return { x: px + 29, y: py + 32 };
-      return { x: px + 19, y: py + 32 };
+      if (pinStr.includes('r') || pinStr === '1') return applyRot(8, 32);
+      if (pinStr.includes('com') || pinStr.includes('cat') || pinStr === '2') return applyRot(15, 32);
+      if (pinStr.includes('g') || pinStr === '3') return applyRot(22, 32);
+      if (pinStr.includes('b') || pinStr === '4') return applyRot(29, 32);
+      return applyRot(19, 32);
     }
 
     // 27. Slide Switch (SPDT)
     if (comp.type === 'slide-switch') {
-      if (pinStr === '1') return { x: px + 12, y: py + 28 };
-      if (pinStr === '2' || pinStr.includes('com')) return { x: px + 26, y: py + 28 };
-      if (pinStr === '3') return { x: px + 40, y: py + 28 };
-      return { x: px + 26, y: py + 28 };
+      if (pinStr === '1') return applyRot(12, 28);
+      if (pinStr === '2' || pinStr.includes('com')) return applyRot(26, 28);
+      if (pinStr === '3') return applyRot(40, 28);
+      return applyRot(26, 28);
     }
 
     // 28. 7-Segment Display (1-digit)
     if (comp.type === '7segment') {
-      if (pinStr.includes('com')) return { x: px + 30, y: py + 8 };
-      if (pinStr === 'a') return { x: px + 30, y: py + 14 };
-      if (pinStr === 'b') return { x: px + 48, y: py + 24 };
-      if (pinStr === 'c') return { x: px + 48, y: py + 52 };
-      if (pinStr === 'd') return { x: px + 30, y: py + 66 };
-      if (pinStr === 'e') return { x: px + 12, y: py + 52 };
-      if (pinStr === 'f') return { x: px + 12, y: py + 24 };
-      if (pinStr === 'g') return { x: px + 30, y: py + 38 };
-      if (pinStr === 'dp') return { x: px + 52, y: py + 74 };
-      return { x: px + 30, y: py + 45 };
+      if (pinStr.includes('com')) return applyRot(30, 8);
+      if (pinStr === 'a') return applyRot(30, 14);
+      if (pinStr === 'b') return applyRot(48, 24);
+      if (pinStr === 'c') return applyRot(48, 52);
+      if (pinStr === 'd') return applyRot(30, 66);
+      if (pinStr === 'e') return applyRot(12, 52);
+      if (pinStr === 'f') return applyRot(12, 24);
+      if (pinStr === 'g') return applyRot(30, 38);
+      if (pinStr === 'dp') return applyRot(52, 74);
+      return applyRot(30, 45);
     }
 
     // 29. 0.96" I2C OLED (GND, VCC, SCL, SDA)
     if (comp.type === 'oled-ssd1306') {
-      if (pinStr.includes('gnd')) return { x: px + 32, y: py + 12 };
-      if (pinStr.includes('vcc')) return { x: px + 44, y: py + 12 };
-      if (pinStr.includes('scl')) return { x: px + 56, y: py + 12 };
-      if (pinStr.includes('sda')) return { x: px + 68, y: py + 12 };
-      return { x: px + 50, y: py + 12 };
+      if (pinStr.includes('gnd')) return applyRot(32, 12);
+      if (pinStr.includes('vcc')) return applyRot(44, 12);
+      if (pinStr.includes('scl')) return applyRot(56, 12);
+      if (pinStr.includes('sda')) return applyRot(68, 12);
+      return applyRot(50, 12);
     }
 
     // 30. 4x AA Battery Pack (6V)
     if (comp.type === 'battery-aa-4') {
-      if (pinStr.includes('+') || pinStr.includes('pos')) return { x: px + 110, y: py + 35 };
-      if (pinStr.includes('-') || pinStr.includes('neg')) return { x: px + 110, y: py + 55 };
-      return { x: px + 110, y: py + 45 };
+      if (pinStr.includes('+') || pinStr.includes('pos') || pinStr === '1') return applyRot(110, 35);
+      if (pinStr.includes('-') || pinStr.includes('neg') || pinStr === '2') return applyRot(110, 55);
+      return applyRot(110, 45);
     }
 
     // 31. Arduino Mega 2560
     if (comp.type === 'arduino-mega') {
-      if (pinStr === '5v') return { x: px + 154, y: py + 182 };
-      if (pinStr.includes('gnd')) return { x: px + 166, y: py + 182 };
+      if (pinStr === '5v') return applyRot(154, 182);
+      if (pinStr.includes('gnd')) return applyRot(166, 182);
       if (pinStr.startsWith('a')) {
         const num = parseInt(pinStr.substring(1), 10) || 0;
-        return { x: px + 212 + num * 10, y: py + 182 };
+        return applyRot(212 + num * 10, 182);
       }
       const dNum = parseInt(pinStr, 10);
-      if (!isNaN(dNum)) return { x: px + 110 + dNum * 5, y: py + 14 };
-      return { x: px + 220, y: py + 120 };
+      if (!isNaN(dNum)) return applyRot(110 + dNum * 5, 14);
+      return applyRot(220, 120);
     }
 
     // 32. Arduino Nano & ESP32
     if (comp.type === 'arduino-nano' || comp.type === 'esp32') {
-      if (pinStr.includes('gnd')) return { x: px + 10, y: py + 40 };
-      if (pinStr.includes('5v') || pinStr.includes('3v3') || pinStr.includes('vcc')) return { x: px + 10, y: py + 20 };
-      return { x: px + 70, y: py + 110 };
+      if (pinStr.includes('gnd')) return applyRot(10, 40);
+      if (pinStr.includes('5v') || pinStr.includes('3v3') || pinStr.includes('vcc')) return applyRot(10, 20);
+      return applyRot(70, 110);
     }
 
-    return { x: px + 30, y: py + 30 };
+    // 33. NeoPixel Strip (8-LED) (DIN, DOUT, 5V/VCC, GND)
+    if (comp.type === 'neopixel-strip') {
+      if (pinStr.includes('din') || pinStr === 'in' || pinStr === 'di') return applyRot(6, 14);
+      if (pinStr.includes('dout') || pinStr === 'out' || pinStr === 'do') return applyRot(134, 14);
+      if (pinStr.includes('vcc') || pinStr.includes('5v') || pinStr === '+') return applyRot(6, 22);
+      if (pinStr.includes('gnd') || pinStr === '-') return applyRot(6, 6);
+      return applyRot(70, 14);
+    }
+
+    // 34. NeoPixel Ring (12-LED) (DIN, DOUT, 5V/VCC, GND)
+    if (comp.type === 'neopixel-ring') {
+      if (pinStr.includes('din') || pinStr === 'in' || pinStr === 'di') return applyRot(10, 38);
+      if (pinStr.includes('dout') || pinStr === 'out' || pinStr === 'do') return applyRot(66, 38);
+      if (pinStr.includes('vcc') || pinStr.includes('5v') || pinStr === '+') return applyRot(38, 10);
+      if (pinStr.includes('gnd') || pinStr === '-') return applyRot(38, 66);
+      return applyRot(38, 38);
+    }
+
+    return applyRot(30, 30);
   }
 
 
@@ -1058,8 +1152,21 @@ export class CircuitRenderer {
   }
 
   getDipIcSVG(comp) {
-    const label = comp.properties?.label || '74HC00';
-    const tag = comp.properties?.function || (label.includes('32') ? 'OR gate' : label.includes('04') ? 'NOT gate' : 'Logic IC');
+    const rawLabel = comp.properties?.label || (comp.type.startsWith('chip-') ? comp.type.replace('chip-', '').toUpperCase() : '74HC00');
+    const label = rawLabel.toUpperCase();
+    let tag = comp.properties?.function;
+    if (!tag) {
+      if (label.includes('32')) tag = 'OR gate';
+      else if (label.includes('04')) tag = 'NOT gate';
+      else if (label.includes('08')) tag = 'AND gate';
+      else if (label.includes('00')) tag = 'NAND gate';
+      else if (label.includes('02')) tag = 'NOR gate';
+      else if (label.includes('86')) tag = 'XOR gate';
+      else if (label.includes('11')) tag = '3-AND gate';
+      else if (label.includes('132')) tag = 'NAND Schmitt';
+      else if (label.includes('555')) tag = 'Timer IC';
+      else tag = 'Logic IC';
+    }
 
     let pinsTop = '';
     let pinsBottom = '';
@@ -1624,6 +1731,64 @@ export class CircuitRenderer {
       <text x="58" y="46" font-size="12" font-weight="bold" fill="#f8fafc" text-anchor="middle">4x AA (6V)</text>
       <circle cx="110" cy="35" r="3" fill="#dc2626"/>
       <circle cx="110" cy="55" r="3" fill="#0f172a" stroke="#ffffff" stroke-width="1"/>
+    `;
+  }
+
+  getNeopixelStripSVG(comp) {
+    let ledsSvg = '';
+    for (let i = 0; i < 8; i++) {
+      const lx = 16 + i * 14;
+      ledsSvg += `
+        <rect x="${lx}" y="8" width="11" height="11" rx="1.5" fill="#f8fafc" stroke="#64748b" stroke-width="0.75"/>
+        <circle cx="${lx + 5.5}" cy="13.5" r="3.8" fill="#e2e8f0"/>
+        <circle cx="${lx + 5.5}" cy="13.5" r="1.8" fill="#38bdf8" opacity="0.85"/>
+      `;
+    }
+    return `
+      <!-- PCB Strip Body -->
+      <rect width="138" height="26" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+      <!-- Input Solder Pads (Left) -->
+      <rect x="2" y="3" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <rect x="2" y="10.5" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <rect x="2" y="18" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <text x="9" y="7" font-size="4" fill="#94a3b8" font-family="sans-serif">-</text>
+      <text x="9" y="14.5" font-size="4" fill="#38bdf8" font-family="sans-serif">DIN</text>
+      <text x="9" y="22" font-size="4" fill="#f87171" font-family="sans-serif">+</text>
+      <!-- 8x WS2812B SMD 5050 LEDs -->
+      ${ledsSvg}
+      <!-- Output Solder Pads (Right) -->
+      <rect x="131" y="3" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <rect x="131" y="10.5" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <rect x="131" y="18" width="5" height="5" rx="0.5" fill="#eab308"/>
+      <text x="123" y="14.5" font-size="4" fill="#38bdf8" font-family="sans-serif">DO</text>
+    `;
+  }
+
+  getNeopixelRingSVG(comp) {
+    let ledsSvg = '';
+    const cx = 38, cy = 38, r = 25;
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * 30 * Math.PI) / 180;
+      const lx = cx + r * Math.cos(angle) - 5;
+      const ly = cy + r * Math.sin(angle) - 5;
+      ledsSvg += `
+        <rect x="${lx}" y="${ly}" width="10" height="10" rx="1.5" fill="#f8fafc" stroke="#64748b" stroke-width="0.75"/>
+        <circle cx="${lx + 5}" cy="${ly + 5}" r="3" fill="#e2e8f0"/>
+        <circle cx="${lx + 5}" cy="${ly + 5}" r="1.5" fill="#ec4899" opacity="0.85"/>
+      `;
+    }
+    return `
+      <!-- Circular Ring PCB -->
+      <circle cx="38" cy="38" r="36" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="38" cy="38" r="15" fill="#0b1120" stroke="#334155" stroke-width="1.5"/>
+      <!-- Solder pads -->
+      <circle cx="10" cy="38" r="2.5" fill="#eab308"/>
+      <circle cx="66" cy="38" r="2.5" fill="#eab308"/>
+      <circle cx="38" cy="10" r="2.5" fill="#eab308"/>
+      <circle cx="38" cy="66" r="2.5" fill="#eab308"/>
+      <text x="38" y="39" font-size="5" font-weight="bold" fill="#38bdf8" text-anchor="middle" font-family="sans-serif">NEO 12</text>
+      <!-- 12 Radial WS2812B SMD 5050 LEDs -->
+      ${ledsSvg}
     `;
   }
 }

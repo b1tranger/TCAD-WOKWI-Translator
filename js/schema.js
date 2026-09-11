@@ -208,6 +208,22 @@ export const COMPONENT_CATALOG = {
     height: 80,
     wokwiType: "wokwi-relay-module"
   },
+  "neopixel-strip": {
+    name: "NeoPixel RGB LED Strip (8-LED)",
+    category: "Outputs & Actuators",
+    width: 140,
+    height: 28,
+    wokwiType: "wokwi-neopixel-strip",
+    defaultProperties: { pixels: 8 }
+  },
+  "neopixel-ring": {
+    name: "NeoPixel RGB LED Ring (12-LED)",
+    category: "Outputs & Actuators",
+    width: 76,
+    height: 76,
+    wokwiType: "wokwi-neopixel-ring",
+    defaultProperties: { pixels: 12 }
+  },
 
   // Passives & Semiconductors
   "resistor": {

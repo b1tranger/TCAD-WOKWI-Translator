@@ -178,7 +178,7 @@ Opening this HTML file in any browser displays the circuit without internet acce
 
 The application utilizes a cache-first Service Worker (`sw.js`). Line 5 declares the synchronized cache identifier:
 ```javascript
-const CACHE_VERSION = 'v0.1.12';
+const CACHE_VERSION = 'v0.1.16';
 ```
 When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are served immediately from the Cache Storage API via a Network-First strategy with offline fallback.
 
@@ -186,7 +186,8 @@ When offline, all static assets (`index.html`, CSS, JS, manifest, versions) are 
 
 ## Version History
 
-- **v0.1.0 to v0.1.12 (2026-09-11)**: Implemented universal Tinkercad public gallery ingestion and dynamic semantic synthesizer capable of parsing and translating any public circuit link or raw JSON payload. Added automatic spatial layout preservation (MCU left, breadboard center, sensors/actuators perimeter), breadboard tie-point coordinate snapping, and logical net synthesis. Added 7 one-click gallery preset chips in the import dialog and synchronized offline cache to `v0.1.12`.
+- **v0.1.16 (2026-09-12)**: Implemented universal Autodesk EAGLE XML (`.brd`) parser (`Translator.fromEagleBrd`) with automatic unit scaling and netlist wiring. Resolved blank canvas issues on academic DLD Lab circuits by fixing XML DOM selector queries and adding `classifyEagleComponent` for 74HC ICs, DIP switches, LEDs, and power sources (16/16 files verified). Implemented exact 2D pin rotation transformation matrix $(lx, ly) \mapsto (rx, ry)$ in `CircuitRenderer.getPinCoordinates` for all components. Added standalone `.brd` / XML ingestion and dynamic DIP IC models directly inside `circuit.html`. Decoupled translation engine from fixed templates to support arbitrary multi-MCU designs ($N \ge 1$ Arduino Uno, Mega, Nano, ESP32 boards) without board drops or circular self-loops. Added `neopixel-strip` and `neopixel-ring` component models, realistic SVG renderers, pin coordinates, and inter-board bezier wire curves. Added `fitToContent` auto-scaling on `CircuitRenderer` and expanded file input/drop zones to accept `.brd` and `.xml` files.
+- **v0.1.0 to v0.1.15 (2026-09-12)**: Fixed critical canvas SVG query selector bug in standalone HTML export pipeline, embedded dynamic client-side SVG renderer fallback, file loader, drag-and-drop, and Wokwi diagram JSON embedding into standalone exports. Added direct file picker and canvas drag-and-drop file ingestion in the main workspace for `diagram.json` and `circuit.json` files, preserving diagram titles and bumping offline cache to `v0.1.15`.
 
 
 

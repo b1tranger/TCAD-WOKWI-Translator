@@ -2,7 +2,7 @@
 // Provides offline caching for the standalone web application
 // Synchronization target: keep version aligned across AGENTS.md, versions.md, README.md
 // Cache version identifier
-const CACHE_VERSION = 'v0.1.12';
+const CACHE_VERSION = 'v0.1.16';
 const CACHE_NAME = `tcad-wokwi-cache-${CACHE_VERSION}`;
 
 
@@ -49,6 +49,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // CRITICAL: Only intercept same-origin requests!
+  // Never hijack external requests (CORS proxies, third-party APIs, CDNs, etc.)
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -68,8 +74,9 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse;
           }
           if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('./index.html');
+            return caches.match('./index.html').then((html) => html || new Response('Offline', { status: 503 }));
           }
+          return new Response('Offline resource unavailable', { status: 503, headers: { 'Content-Type': 'text/plain' } });
         });
       })
   );

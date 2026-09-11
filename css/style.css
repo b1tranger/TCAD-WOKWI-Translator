@@ -460,6 +460,12 @@ body {
   -webkit-user-select: none;
 }
 
+.canvas-viewport.drag-over {
+  outline: 3px dashed var(--accent-sky);
+  outline-offset: -12px;
+  background-color: rgba(56, 189, 248, 0.08);
+}
+
 .canvas-svg {
   width: 100%;
   height: 100%;

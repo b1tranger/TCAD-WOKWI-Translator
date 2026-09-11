@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imported Wokwi Diagram - Standalone Viewer</title>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --border-subtle: #1e293b;
+      --sky-primary: #38bdf8;
+      --sky-secondary: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      height: 52px;
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--sky-primary);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .btn-accent {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--sky-primary);
+    }
+    .btn-accent:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--sky-primary);
+      color: #ffffff;
+    }
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+      color: #ffffff;
+    }
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+    #canvas-container.is-panning {
+      cursor: grabbing;
+    }
+    #canvas-container.drag-over {
+      outline: 3px dashed var(--sky-primary);
+      outline-offset: -12px;
+      background: rgba(56, 189, 248, 0.08);
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .canvas-component {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      transition: filter 0.15s ease;
+    }
+    .canvas-component:hover {
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
+    }
+    .wire {
+      pointer-events: stroke;
+      cursor: pointer;
+      transition: stroke-width 0.2s ease, filter 0.2s ease;
+    }
+    .wire:hover {
+      stroke-width: 5 !important;
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+    }
+    .wire-terminal {
+      pointer-events: none;
+    }
+    .drop-hint {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 5;
+    }
+    .zoom-controls {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 5;
+    }
+    .zoom-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    .zoom-btn:hover {
+      background: #0284c7;
+      border-color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-brand">
+      <strong id="circuit-title-display">Imported Wokwi Diagram</strong>
+      <span class="badge">Standalone Universal HTML</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-accent" id="btn-load-file" title="Open local diagram.json or circuit.json">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        Open File
+      </button>
+      <input type="file" id="standalone-file-input" accept=".json" style="display: none;" />
+
+      <button class="btn" id="btn-download-wokwi" title="Export Wokwi diagram.json">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        Wokwi JSON
+      </button>
+
+      <button class="btn" id="btn-download-json" title="Export Circuit JSON">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        Circuit JSON
+      </button>
+
+      <button class="btn btn-primary" id="btn-reset-view" title="Reset Pan & Zoom">
+        Reset View
+      </button>
+    </div>
+  </header>
+  <div id="canvas-container">
+    <div class="drop-hint">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Drop any diagram.json or circuit.json here
+    </div>
+    <svg id="circuit-svg" viewBox="0 0 1400 900">
+      <defs>
+        <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="12" cy="12" r="1.2" fill="rgba(56, 189, 248, 0.18)"/>
+        </pattern>
+        <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#canvas-grid)"/>
+      <g id="viewport-group">
+        
+      </g>
+    </svg>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Zoom Out">-</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset Zoom">1:1</button>
+    </div>
+  </div>
+  <script id="tcad-circuit-data" type="application/json">
+{
+  "metadata": {
+    "title": "Imported Wokwi Diagram",
+    "version": "1.0.0",
+    "createdAt": "2026-09-11T19:05:10.133Z",
+    "modifiedAt": "2026-09-11T19:05:10.133Z",
+    "author": "Tinkercad Importer"
+  },
+  "viewport": {
+    "zoom": 1,
+    "panX": 0,
+    "panY": 0
+  },
+  "components": [
+    {
+      "id": "arduino_uno",
+      "type": "arduino-uno",
+      "x": 60,
+      "y": 100,
+      "rotation": 0,
+      "properties": {
+        "label": "Arduino Uno"
+      }
+    },
+    {
+      "id": "lcd_i2c",
+      "type": "lcd1602-i2c",
+      "x": 428,
+      "y": 340,
+      "rotation": 0,
+      "properties": {
+        "label": "16x2 I2C LCD",
+        "text": "Happy Valentine! <3"
+      }
+    },
+    {
+      "id": "pot_dimmer",
+      "type": "potentiometer",
+      "x": 498,
+      "y": 160,
+      "rotation": 0,
+      "properties": {
+        "label": "Brightness Dimmer",
+        "resistance": "10k"
+      }
+    },
+    {
+      "id": "btn_cycle",
+      "type": "pushbutton",
+      "x": 598,
+      "y": 208,
+      "rotation": 0,
+      "properties": {
+        "label": "Effect Cycle"
+      }
+    },
+    {
+      "id": "led_heart_1",
+      "type": "led",
+      "x": 473,
+      "y": 92,
+      "rotation": 0,
+      "properties": {
+        "color": "red",
+        "label": "Heart Left"
+      }
+    },
+    {
+      "id": "led_heart_2",
+      "type": "led",
+      "x": 540,
+      "y": 75,
+      "rotation": 0,
+      "properties": {
+        "color": "red",
+        "label": "Heart Center"
+      }
+    },
+    {
+      "id": "led_heart_3",
+      "type": "led",
+      "x": 613,
+      "y": 92,
+      "rotation": 0,
+      "properties": {
+        "color": "red",
+        "label": "Heart Right"
+      }
+    },
+    {
+      "id": "res_heart_1",
+      "type": "resistor",
+      "x": 471,
+      "y": 159,
+      "rotation": 90,
+      "properties": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    },
+    {
+      "id": "res_heart_2",
+      "type": "resistor",
+      "x": 541,
+      "y": 137,
+      "rotation": 90,
+      "properties": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    },
+    {
+      "id": "res_heart_3",
+      "type": "resistor",
+      "x": 611,
+      "y": 159,
+      "rotation": 90,
+      "properties": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "wire_1",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "A4"
+      },
+      "to": {
+        "component": "lcd_i2c",
+        "pin": "SDA"
+      },
+      "color": "blue",
+      "bends": []
+    },
+    {
+      "id": "wire_2",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "A5"
+      },
+      "to": {
+        "component": "lcd_i2c",
+        "pin": "SCL"
+      },
+      "color": "yellow",
+      "bends": []
+    },
+    {
+      "id": "wire_3",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "A0"
+      },
+      "to": {
+        "component": "pot_dimmer",
+        "pin": "SIG"
+      },
+      "color": "blue",
+      "bends": []
+    },
+    {
+      "id": "wire_4",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "2"
+      },
+      "to": {
+        "component": "btn_cycle",
+        "pin": "1.l"
+      },
+      "color": "green",
+      "bends": []
+    },
+    {
+      "id": "wire_5",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "9"
+      },
+      "to": {
+        "component": "led_heart_1",
+        "pin": "A"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_6",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "10"
+      },
+      "to": {
+        "component": "led_heart_2",
+        "pin": "A"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_7",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "11"
+      },
+      "to": {
+        "component": "led_heart_3",
+        "pin": "A"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_8",
+      "from": {
+        "component": "led_heart_1",
+        "pin": "C"
+      },
+      "to": {
+        "component": "res_heart_1",
+        "pin": "1"
+      },
+      "color": "green",
+      "bends": []
+    },
+    {
+      "id": "wire_9",
+      "from": {
+        "component": "led_heart_2",
+        "pin": "C"
+      },
+      "to": {
+        "component": "res_heart_2",
+        "pin": "1"
+      },
+      "color": "green",
+      "bends": []
+    },
+    {
+      "id": "wire_10",
+      "from": {
+        "component": "led_heart_3",
+        "pin": "C"
+      },
+      "to": {
+        "component": "res_heart_3",
+        "pin": "1"
+      },
+      "color": "green",
+      "bends": []
+    },
+    {
+      "id": "wire_11",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "GND.1"
+      },
+      "to": {
+        "component": "lcd_i2c",
+        "pin": "GND"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_12",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "GND.1"
+      },
+      "to": {
+        "component": "pot_dimmer",
+        "pin": "VCC"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_13",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "GND.1"
+      },
+      "to": {
+        "component": "res_heart_1",
+        "pin": "2"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_14",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "GND.1"
+      },
+      "to": {
+        "component": "res_heart_2",
+        "pin": "2"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_15",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "GND.1"
+      },
+      "to": {
+        "component": "res_heart_3",
+        "pin": "2"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_16",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "5V"
+      },
+      "to": {
+        "component": "lcd_i2c",
+        "pin": "VCC"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_17",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "5V"
+      },
+      "to": {
+        "component": "pot_dimmer",
+        "pin": "GND"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_18",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "5V"
+      },
+      "to": {
+        "component": "btn_cycle",
+        "pin": "2.l"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_19",
+      "from": {
+        "component": "arduino_uno",
+        "pin": "5V"
+      },
+      "to": {
+        "component": "res_heart_2",
+        "pin": "1"
+      },
+      "color": "red",
+      "bends": []
+    },
+    {
+      "id": "wire_20",
+      "from": {
+        "component": "led_heart_1",
+        "pin": "A"
+      },
+      "to": {
+        "component": "led_heart_3",
+        "pin": "A"
+      },
+      "color": "black",
+      "bends": []
+    },
+    {
+      "id": "wire_21",
+      "from": {
+        "component": "led_heart_1",
+        "pin": "A"
+      },
+      "to": {
+        "component": "led_heart_3",
+        "pin": "C"
+      },
+      "color": "black",
+      "bends": []
+    }
+  ]
+}
+  </script>
+  <script id="wokwi-circuit-data" type="application/json">
+{
+  "version": 1,
+  "author": "Tinkercad Importer",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "arduino_uno",
+      "top": 100,
+      "left": 60,
+      "rotate": 0,
+      "attrs": {
+        "label": "Arduino Uno"
+      }
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd_i2c",
+      "top": 340,
+      "left": 428,
+      "rotate": 0,
+      "attrs": {
+        "label": "16x2 I2C LCD",
+        "text": "Happy Valentine! <3"
+      }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_dimmer",
+      "top": 160,
+      "left": 498,
+      "rotate": 0,
+      "attrs": {
+        "label": "Brightness Dimmer",
+        "resistance": "10k"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_cycle",
+      "top": 208,
+      "left": 598,
+      "rotate": 0,
+      "attrs": {
+        "label": "Effect Cycle"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_heart_1",
+      "top": 92,
+      "left": 473,
+      "rotate": 0,
+      "attrs": {
+        "color": "red",
+        "label": "Heart Left"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_heart_2",
+      "top": 75,
+      "left": 540,
+      "rotate": 0,
+      "attrs": {
+        "color": "red",
+        "label": "Heart Center"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_heart_3",
+      "top": 92,
+      "left": 613,
+      "rotate": 0,
+      "attrs": {
+        "color": "red",
+        "label": "Heart Right"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "res_heart_1",
+      "top": 159,
+      "left": 471,
+      "rotate": 90,
+      "attrs": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "res_heart_2",
+      "top": 137,
+      "left": 541,
+      "rotate": 90,
+      "attrs": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "res_heart_3",
+      "top": 159,
+      "left": 611,
+      "rotate": 90,
+      "attrs": {
+        "resistance": "220",
+        "label": "220Ω"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "arduino_uno:A4",
+      "lcd_i2c:SDA",
+      "blue",
+      []
+    ],
+    [
+      "arduino_uno:A5",
+      "lcd_i2c:SCL",
+      "yellow",
+      []
+    ],
+    [
+      "arduino_uno:A0",
+      "pot_dimmer:SIG",
+      "blue",
+      []
+    ],
+    [
+      "arduino_uno:2",
+      "btn_cycle:1.l",
+      "green",
+      []
+    ],
+    [
+      "arduino_uno:9",
+      "led_heart_1:A",
+      "red",
+      []
+    ],
+    [
+      "arduino_uno:10",
+      "led_heart_2:A",
+      "red",
+      []
+    ],
+    [
+      "arduino_uno:11",
+      "led_heart_3:A",
+      "red",
+      []
+    ],
+    [
+      "led_heart_1:C",
+      "res_heart_1:1",
+      "green",
+      []
+    ],
+    [
+      "led_heart_2:C",
+      "res_heart_2:1",
+      "green",
+      []
+    ],
+    [
+      "led_heart_3:C",
+      "res_heart_3:1",
+      "green",
+      []
+    ],
+    [
+      "arduino_uno:GND.1",
+      "lcd_i2c:GND",
+      "black",
+      []
+    ],
+    [
+      "arduino_uno:GND.1",
+      "pot_dimmer:VCC",
+      "black",
+      []
+    ],
+    [
+      "arduino_uno:GND.1",
+      "res_heart_1:2",
+      "black",
+      []
+    ],
+    [
+      "arduino_uno:GND.1",
+      "res_heart_2:2",
+      "black",
+      []
+    ],
+    [
+      "arduino_uno:GND.1",
+      "res_heart_3:2",
+      "black",
+      []
+    ],
+    [
+      "arduino_uno:5V",
+      "lcd_i2c:VCC",
+      "red",
+      []
+    ],
+    [
+      "arduino_uno:5V",
+      "pot_dimmer:GND",
+      "red",
+      []
+    ],
+    [
+      "arduino_uno:5V",
+      "btn_cycle:2.l",
+      "red",
+      []
+    ],
+    [
+      "arduino_uno:5V",
+      "res_heart_2:1",
+      "red",
+      []
+    ],
+    [
+      "led_heart_1:A",
+      "led_heart_3:A",
+      "black",
+      []
+    ],
+    [
+      "led_heart_1:A",
+      "led_heart_3:C",
+      "black",
+      []
+    ]
+  ]
+}
+  </script>
+  <script>
+    // Embedded Pan & Zoom Interactive Controls
+    let zoom = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    const container = document.getElementById('canvas-container');
+    const viewportGroup = document.getElementById('viewport-group');
+
+    function updateTransform() {
+      if (viewportGroup) {
+        viewportGroup.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoom})`);
+      }
+    }
+
+    container.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isPanning = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+      container.classList.add('is-panning');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isPanning = false;
+      container.classList.remove('is-panning');
+    });
+
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1.15 : 0.85;
+      zoom = Math.max(0.2, Math.min(4.0, zoom * delta));
+      updateTransform();
+    }, { passive: false });
+
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      zoom = Math.min(4.0, zoom * 1.25);
+      updateTransform();
+    });
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      zoom = Math.max(0.2, zoom / 1.25);
+      updateTransform();
+    });
+    document.getElementById('zoom-reset').addEventListener('click', () => {
+      zoom = 1.0; panX = 0; panY = 0;
+      updateTransform();
+    });
+    document.getElementById('btn-reset-view').addEventListener('click', () => {
+      zoom = 1.0; panX = 0; panY = 0;
+      updateTransform();
+    });
+
+    // Dynamic Circuit Renderer (Active on file open / drag-and-drop or if static innerHTML is empty)
+    function renderDynamicSvg(data) {
+      if (!viewportGroup || !data) return;
+      viewportGroup.innerHTML = '';
+
+      const comps = data.components || [];
+      const parts = data.parts || [];
+      const conns = data.connections || [];
+
+      // Normalize items whether source is Native JSON or Wokwi diagram.json
+      const items = comps.length ? comps.map(c => ({
+        id: c.id,
+        type: (c.type || '').toLowerCase(),
+        x: Number(c.x || 0),
+        y: Number(c.y || 0),
+        rot: Number(c.rotation || 0),
+        label: c.properties?.label || c.name || c.id
+      })) : parts.map(p => ({
+        id: p.id,
+        type: (p.type || '').replace(/^wokwi-/, '').toLowerCase(),
+        x: Number(p.left || 0),
+        y: Number(p.top || 0),
+        rot: Number(p.rotate || 0),
+        label: p.attrs?.label || p.attrs?.text || p.id
+      }));
+
+      items.forEach(item => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', `translate(${item.x}, ${item.y}) rotate(${item.rot})`);
+        g.setAttribute('class', 'canvas-component');
+        g.setAttribute('data-id', item.id);
+
+        let bodySvg = '';
+        if (item.type.includes('arduino')) {
+          bodySvg = `<rect width="260" height="180" rx="10" fill="#00878F" stroke="#005B60" stroke-width="2"/>
+            <text x="130" y="30" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">ARDUINO UNO</text>
+            <rect x="15" y="45" width="45" height="35" fill="#B0BEC5" rx="3"/>
+            <rect x="15" y="110" width="30" height="40" fill="#212121" rx="3"/>
+            <rect x="90" y="80" width="110" height="45" fill="#1e293b" rx="4" stroke="#475569"/>
+            <text x="145" y="107" fill="#38bdf8" font-size="10" font-family="monospace" text-anchor="middle">ATmega328P</text>`;
+        } else if (item.type.includes('breadboard')) {
+          bodySvg = `<rect width="480" height="165" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="20" y1="18" x2="460" y2="18" stroke="#EF4444" stroke-width="2"/>
+            <line x1="20" y1="36" x2="460" y2="36" stroke="#3B82F6" stroke-width="2"/>
+            <line x1="20" y1="130" x2="460" y2="130" stroke="#EF4444" stroke-width="2"/>
+            <line x1="20" y1="148" x2="460" y2="148" stroke="#3B82F6" stroke-width="2"/>
+            <text x="240" y="88" fill="#64748B" font-size="12" font-weight="bold" font-family="monospace" text-anchor="middle">HALF BREADBOARD</text>`;
+        } else if (item.type.includes('lcd')) {
+          bodySvg = `<rect width="240" height="85" rx="6" fill="#14532D" stroke="#052E16" stroke-width="2"/>
+            <rect x="15" y="12" width="210" height="60" fill="#15803D" rx="4"/>
+            <rect x="22" y="18" width="196" height="48" fill="#86EFAC" rx="2"/>
+            <text x="120" y="47" fill="#052E16" font-family="monospace" font-weight="bold" font-size="12" text-anchor="middle">${item.label || '16x2 LCD'}</text>`;
+        } else if (item.type.includes('potentiometer')) {
+          bodySvg = `<rect width="60" height="60" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
+            <circle cx="30" cy="30" r="20" fill="#334155" stroke="#64748B" stroke-width="1.5"/>
+            <line x1="30" y1="30" x2="44" y2="16" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+            <text x="30" y="55" fill="#94A3B8" font-size="8" text-anchor="middle">POT</text>`;
+        } else if (item.type.includes('pushbutton')) {
+          bodySvg = `<rect width="45" height="45" rx="6" fill="#334155" stroke="#475569" stroke-width="1.5"/>
+            <circle cx="22.5" cy="22.5" r="14" fill="#EF4444" stroke="#B91C1C" stroke-width="1.5"/>
+            <text x="22.5" y="41" fill="#94A3B8" font-size="7" text-anchor="middle">BTN</text>`;
+        } else if (item.type.includes('led')) {
+          bodySvg = `<circle cx="15" cy="15" r="12" fill="#EF4444" stroke="#B91C1C" stroke-width="1.5" filter="url(#glow-effect)"/>
+            <line x1="10" y1="27" x2="10" y2="45" stroke="#94A3B8" stroke-width="2.5"/>
+            <line x1="20" y1="27" x2="20" y2="48" stroke="#94A3B8" stroke-width="2.5"/>
+            <text x="15" y="32" fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle">LED</text>`;
+        } else if (item.type.includes('resistor')) {
+          bodySvg = `<rect x="15" y="4" width="40" height="14" rx="4" fill="#D97706" stroke="#B45309" stroke-width="1.5"/>
+            <line x1="0" y1="11" x2="15" y2="11" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="55" y1="11" x2="70" y2="11" stroke="#94A3B8" stroke-width="2"/>
+            <line x1="23" y1="4" x2="23" y2="18" stroke="#DC2626" stroke-width="2"/>
+            <line x1="31" y1="4" x2="31" y2="18" stroke="#2563EB" stroke-width="2"/>
+            <line x1="39" y1="4" x2="39" y2="18" stroke="#D97706" stroke-width="2"/>
+            <text x="35" y="27" fill="#94A3B8" font-size="7" text-anchor="middle">RES</text>`;
+        } else {
+          bodySvg = `<rect width="70" height="40" rx="4" fill="#1E293B" stroke="#64748B" stroke-width="1.5"/>
+            <text x="35" y="24" fill="#F8FAFC" font-size="9" text-anchor="middle">${item.label || item.type}</text>`;
+        }
+        g.innerHTML = bodySvg;
+        viewportGroup.appendChild(g);
+      });
+
+      // Render wires
+      conns.forEach((conn) => {
+        let fromCompId, toCompId, color = '#38bdf8';
+        if (Array.isArray(conn)) {
+          fromCompId = (conn[0] || '').split(':')[0];
+          toCompId = (conn[1] || '').split(':')[0];
+          color = conn[2] || '#38bdf8';
+        } else {
+          fromCompId = conn.from?.component;
+          toCompId = conn.to?.component;
+          color = conn.color || '#38bdf8';
+        }
+
+        const fromItem = items.find(it => it.id === fromCompId);
+        const toItem = items.find(it => it.id === toCompId);
+        if (!fromItem || !toItem) return;
+
+        const x1 = fromItem.x + 20;
+        const y1 = fromItem.y + 20;
+        const x2 = toItem.x + 20;
+        const y2 = toItem.y + 20;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const cx1 = x1 + dx * 0.3;
+        const cy1 = y1 + dy * 0.1 - 20;
+        const cx2 = x1 + dx * 0.7;
+        const cy2 = y2 - dy * 0.1 - 20;
+
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+        p.setAttribute('stroke', color);
+        p.setAttribute('stroke-width', '3');
+        p.setAttribute('fill', 'none');
+        p.setAttribute('class', 'wire');
+        viewportGroup.appendChild(p);
+      });
+    }
+
+    // Process imported/dropped JSON content
+    function loadCircuitJson(text, fileName = '') {
+      try {
+        const parsed = JSON.parse(text);
+        let title = fileName.replace(/\.json$/i, '') || 'Imported Circuit';
+        if (parsed.metadata?.title) title = parsed.metadata.title;
+        else if (parsed.title) title = parsed.title;
+        else if (parsed.name) title = parsed.name;
+
+        document.getElementById('circuit-title-display').textContent = title;
+        document.getElementById('tcad-circuit-data').textContent = JSON.stringify(parsed, null, 2);
+        
+        if (parsed.parts) {
+          document.getElementById('wokwi-circuit-data').textContent = JSON.stringify(parsed, null, 2);
+        }
+
+        renderDynamicSvg(parsed);
+        panX = 0; panY = 0; zoom = 1.0;
+        updateTransform();
+      } catch (err) {
+        alert('Invalid JSON file: ' + err.message);
+      }
+    }
+
+    // Fallback: If viewportGroup is empty upon load, render from embedded JSON
+    if (!viewportGroup.children.length) {
+      try {
+        const initialData = JSON.parse(document.getElementById('tcad-circuit-data').textContent);
+        renderDynamicSvg(initialData);
+      } catch (e) {}
+    }
+
+    // Standalone File Picker
+    const fileInput = document.getElementById('standalone-file-input');
+    const btnLoadFile = document.getElementById('btn-load-file');
+    if (btnLoadFile && fileInput) {
+      btnLoadFile.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => loadCircuitJson(evt.target.result, file.name);
+        reader.readAsText(file);
+      });
+    }
+
+    // Drag-and-Drop file loading on container
+    container.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      container.classList.add('drag-over');
+    });
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      container.classList.add('drag-over');
+    });
+    container.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget && container.contains(e.relatedTarget)) return;
+      container.classList.remove('drag-over');
+    });
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      container.classList.remove('drag-over');
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => loadCircuitJson(evt.target.result, file.name);
+        reader.readAsText(file);
+      }
+    });
+
+    // Download handlers
+    document.getElementById('btn-download-json').addEventListener('click', () => {
+      const dataStr = document.getElementById('tcad-circuit-data').textContent;
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'circuit.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-download-wokwi').addEventListener('click', () => {
+      const wokwiEl = document.getElementById('wokwi-circuit-data');
+      const dataStr = wokwiEl ? wokwiEl.textContent : document.getElementById('tcad-circuit-data').textContent;
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'diagram.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>

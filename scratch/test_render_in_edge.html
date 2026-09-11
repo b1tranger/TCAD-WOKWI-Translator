@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<svg id="circuit-canvas" width="1200" height="800">
+  <g id="viewport-group"></g>
+</svg>
+<div id="output"></div>
+<script type="module">
+import { Translator } from '../js/translator.js';
+import { CircuitRenderer } from '../js/renderer.js';
+
+window.addEventListener('error', (e) => {
+  document.getElementById('output').textContent = 'ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno;
+});
+
+const svg = document.getElementById('circuit-canvas');
+const renderer = new CircuitRenderer(svg);
+
+// Test 5.lab 04-1.brd
+const xml = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE eagle SYSTEM "eagle.dtd">
+<eagle version="9.7.0">
+<drawing>
+<board>
+<elements>
+<element name="D1" library="Tinkercad" package="LEDRD254W60D565H860B" value="RED" x="101.0347" y="43.2487" rot="R180" smashed="yes"/>
+<element name="P1" library="Tinkercad" package="BATTERY-GENERIC" value="BATTERYGENERIC" x="8.255" y="38.7804" rot="R180" smashed="yes"/>
+<element name="U2" library="Tinkercad" package="DIP762W53P254L1969H508Q14B" value="74HC32_PDIP" x="84.5247" y="31.8187" rot="R90" smashed="yes"/>
+<element name="U1" library="Tinkercad" package="DIP762W53P254L1969H508Q14B" value="74HC08_PDIP" x="54.0447" y="31.8187" rot="R90" smashed="yes"/>
+<element name="SW1" library="Tinkercad" package="78B04ST" value="SPST-478B04ST" x="13.2592" y="9.525" smashed="yes"/>
+</elements>
+<signals>
+<signal name="U2_2Y"><contactref element="U2" pad="6"/><contactref element="D1" pad="1"/></signal>
+<signal name="P1-"><contactref element="D1" pad="2"/><contactref element="U2" pad="7"/><contactref element="U1" pad="7"/><contactref element="P1" pad="-"/></signal>
+<signal name="P1+"><contactref element="U2" pad="14"/><contactref element="U1" pad="14"/><contactref element="SW1" pad="6"/><contactref element="SW1" pad="7"/><contactref element="SW1" pad="8"/><contactref element="P1" pad="+"/></signal>
+</signals>
+</board>
+</drawing>
+</eagle>`;
+
+try {
+  const project = Translator.fromEagleBrd(xml);
+  renderer.fitToContent(project);
+  renderer.render(project);
+
+  const compsRendered = renderer.viewportGroup.querySelectorAll('.canvas-component').length;
+  const wiresRendered = renderer.viewportGroup.querySelectorAll('.circuit-wire').length;
+  const transform = renderer.viewportGroup.getAttribute('transform');
+
+  document.getElementById('output').textContent = JSON.stringify({
+    success: true,
+    compsRendered,
+    wiresRendered,
+    transform,
+    zoom: renderer.zoom,
+    panX: renderer.panX,
+    panY: renderer.panY
+  }, null, 2);
+} catch (err) {
+  document.getElementById('output').textContent = 'CATCH: ' + err.message + '\n' + err.stack;
+}
+</script>
+</body>
+</html>

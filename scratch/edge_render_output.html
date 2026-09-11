@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body>
+<svg id="circuit-canvas" width="1200" height="800"><defs>
+      <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <circle cx="12" cy="12" r="1.2" fill="rgba(56, 189, 248, 0.18)"></circle>
+      </pattern>
+      <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="blur"></feGaussianBlur>
+        <feComposite in="SourceGraphic" in2="blur" operator="over"></feComposite>
+      </filter>
+    </defs><rect width="100%" height="100%" fill="url(#canvas-grid)"></rect><g id="viewport-group" transform="translate(213, 170) scale(1.4)"><g transform="translate(413, 60) rotate(180)" class="canvas-component" data-id="d1">
+      <!-- Axial Lead Left -->
+      <line x1="2" y1="10" x2="16" y2="10" stroke="#94a3b8" stroke-width="2"></line>
+      <!-- Black Cylinder Body -->
+      <rect x="16" y="3" width="36" height="14" rx="3" fill="#0f172a" stroke="#1e293b" stroke-width="1"></rect>
+      <!-- Silver Cathode Band -->
+      <rect x="44" y="3" width="6" height="14" fill="#cbd5e1"></rect>
+      <!-- Axial Lead Right -->
+      <line x1="52" y1="10" x2="68" y2="10" stroke="#94a3b8" stroke-width="2"></line>
+    </g><g transform="translate(60, 77) rotate(180)" class="canvas-component" data-id="p1">
+      <rect width="116" height="84" rx="4" fill="#0f172a" stroke="#334155" stroke-width="2"></rect>
+      <rect x="6" y="8" width="104" height="16" rx="2" fill="#1e293b"></rect>
+      <rect x="6" y="26" width="104" height="16" rx="2" fill="#1e293b"></rect>
+      <rect x="6" y="44" width="104" height="16" rx="2" fill="#1e293b"></rect>
+      <rect x="6" y="62" width="104" height="16" rx="2" fill="#1e293b"></rect>
+      <text x="58" y="46" font-size="12" font-weight="bold" fill="#f8fafc" text-anchor="middle">4x AA (6V)</text>
+      <circle cx="110" cy="35" r="3" fill="#dc2626"></circle>
+      <circle cx="110" cy="55" r="3" fill="#0f172a" stroke="#ffffff" stroke-width="1"></circle>
+    </g><g transform="translate(350, 103) rotate(90)" class="canvas-component" data-id="u2">
+      <!-- Tinkercad Floating Tag Badge -->
+      <g transform="translate(60, -32)">
+        <rect x="-30" y="0" width="60" height="20" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"></rect>
+        <text x="0" y="13" font-size="9" font-weight="bold" fill="#334155" text-anchor="middle" font-family="sans-serif">Logic IC</text>
+        <circle cx="0" cy="28" r="4.5" fill="#ffffff" stroke="#94a3b8" stroke-width="1"></circle>
+        <line x1="-2.5" y1="28" x2="2.5" y2="28" stroke="#64748b" stroke-width="1"></line>
+      </g>
+
+      <!-- Silver Dual-in-Line Pin Legs -->
+      <rect x="14" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="34" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="54" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="74" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="94" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="114" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="134" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect>
+      <rect x="14" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="34" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="54" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="74" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="94" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="114" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="134" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect>
+
+      <!-- Tinkercad Molded Epoxy DIP-14 Package -->
+      <rect width="154" height="54" rx="3" fill="#18181b" stroke="#27272a" stroke-width="2" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.4))"></rect>
+      <rect x="2" y="2" width="150" height="50" rx="2" fill="#202023" stroke="#2e2e32" stroke-width="0.75"></rect>
+      <!-- Semicircular orientation notch on left -->
+      <path d="M 2 20 A 7 7 0 0 1 2 34 Z" fill="#141416"></path>
+      <!-- Pin 1 Circular Dot Index -->
+      <circle cx="16" cy="38" r="3" fill="#141416" stroke="#27272a" stroke-width="0.5"></circle>
+
+      <!-- Crisp White Silkscreen Part Label -->
+      <text x="82" y="32" font-size="13" font-weight="bold" fill="#f4f4f5" text-anchor="middle" font-family="monospace" letter-spacing="1">74HC00</text>
+      <text x="82" y="44" font-size="7.5" fill="#a1a1aa" text-anchor="middle" font-family="sans-serif">TINKERCAD IC</text>
+    </g><g transform="translate(234, 103) rotate(90)" class="canvas-component" data-id="u1">
+      <!-- Tinkercad Floating Tag Badge -->
+      <g transform="translate(60, -32)">
+        <rect x="-30" y="0" width="60" height="20" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"></rect>
+        <text x="0" y="13" font-size="9" font-weight="bold" fill="#334155" text-anchor="middle" font-family="sans-serif">Logic IC</text>
+        <circle cx="0" cy="28" r="4.5" fill="#ffffff" stroke="#94a3b8" stroke-width="1"></circle>
+        <line x1="-2.5" y1="28" x2="2.5" y2="28" stroke="#64748b" stroke-width="1"></line>
+      </g>
+
+      <!-- Silver Dual-in-Line Pin Legs -->
+      <rect x="14" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="34" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="54" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="74" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="94" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="114" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="134" y="-7" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect>
+      <rect x="14" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="34" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="54" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="74" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="94" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="114" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect><rect x="134" y="53" width="9" height="8" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"></rect>
+
+      <!-- Tinkercad Molded Epoxy DIP-14 Package -->
+      <rect width="154" height="54" rx="3" fill="#18181b" stroke="#27272a" stroke-width="2" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.4))"></rect>
+      <rect x="2" y="2" width="150" height="50" rx="2" fill="#202023" stroke="#2e2e32" stroke-width="0.75"></rect>
+      <!-- Semicircular orientation notch on left -->
+      <path d="M 2 20 A 7 7 0 0 1 2 34 Z" fill="#141416"></path>
+      <!-- Pin 1 Circular Dot Index -->
+      <circle cx="16" cy="38" r="3" fill="#141416" stroke="#27272a" stroke-width="0.5"></circle>
+
+      <!-- Crisp White Silkscreen Part Label -->
+      <text x="82" y="32" font-size="13" font-weight="bold" fill="#f4f4f5" text-anchor="middle" font-family="monospace" letter-spacing="1">74HC00</text>
+      <text x="82" y="44" font-size="7.5" fill="#a1a1aa" text-anchor="middle" font-family="sans-serif">TINKERCAD IC</text>
+    </g><g transform="translate(79, 188) rotate(0)" class="canvas-component" data-id="sw1">
+      <rect width="60" height="60" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"></rect>
+      <text x="30" y="34" font-size="10" fill="#38bdf8" text-anchor="middle" font-family="monospace">generic-component</text>
+    </g><g class="circuit-wire-group"><path d="M 468 155 C 455.75 121.5, 431.25 53.5, 419 70" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="468" cy="155" r="3" fill="#38bdf8"></circle><circle cx="419" cy="70" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 477 70 C 469 95.5, 480 129.5, 488 155" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="477" cy="70" r="3" fill="#38bdf8"></circle><circle cx="488" cy="155" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 477 70 C 423.75 51.3, 317.25 101.7, 264 133" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="477" cy="70" r="3" fill="#38bdf8"></circle><circle cx="264" cy="133" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 477 70 C 477 20, 170 20, 170 132" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="477" cy="70" r="3" fill="#38bdf8"></circle><circle cx="170" cy="132" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 368 105 C 342 82.8, 290 105.19999999999999, 264 133" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="368" cy="105" r="3" fill="#38bdf8"></circle><circle cx="264" cy="133" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 368 105 C 368 55, 109 55, 109 218" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="368" cy="105" r="3" fill="#38bdf8"></circle><circle cx="109" cy="218" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 368 105 C 368 55, 109 55, 109 218" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="368" cy="105" r="3" fill="#38bdf8"></circle><circle cx="109" cy="218" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 368 105 C 368 55, 109 55, 109 218" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="368" cy="105" r="3" fill="#38bdf8"></circle><circle cx="109" cy="218" r="3" fill="#38bdf8"></circle></g><g class="circuit-wire-group"><path d="M 368 105 C 318.5 80.7, 219.5 86.3, 170 112" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" class="circuit-wire" filter="url(#glow-effect)"></path><circle cx="368" cy="105" r="3" fill="#38bdf8"></circle><circle cx="170" cy="112" r="3" fill="#38bdf8"></circle></g></g></svg>
+<div id="output">{
+  "success": true,
+  "compsRendered": 5,
+  "wiresRendered": 9,
+  "transform": "translate(213, 170) scale(1.4)",
+  "zoom": 1.4,
+  "panX": 213,
+  "panY": 170
+}</div>
+<script type="module">
+import { Translator } from '../js/translator.js';
+import { CircuitRenderer } from '../js/renderer.js';
+
+window.addEventListener('error', (e) => {
+  document.getElementById('output').textContent = 'ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno;
+});
+
+const svg = document.getElementById('circuit-canvas');
+const renderer = new CircuitRenderer(svg);
+
+// Test 5.lab 04-1.brd
+const xml = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE eagle SYSTEM "eagle.dtd">
+<eagle version="9.7.0">
+<drawing>
+<board>
+<elements>
+<element name="D1" library="Tinkercad" package="LEDRD254W60D565H860B" value="RED" x="101.0347" y="43.2487" rot="R180" smashed="yes"/>
+<element name="P1" library="Tinkercad" package="BATTERY-GENERIC" value="BATTERYGENERIC" x="8.255" y="38.7804" rot="R180" smashed="yes"/>
+<element name="U2" library="Tinkercad" package="DIP762W53P254L1969H508Q14B" value="74HC32_PDIP" x="84.5247" y="31.8187" rot="R90" smashed="yes"/>
+<element name="U1" library="Tinkercad" package="DIP762W53P254L1969H508Q14B" value="74HC08_PDIP" x="54.0447" y="31.8187" rot="R90" smashed="yes"/>
+<element name="SW1" library="Tinkercad" package="78B04ST" value="SPST-478B04ST" x="13.2592" y="9.525" smashed="yes"/>
+</elements>
+<signals>
+<signal name="U2_2Y"><contactref element="U2" pad="6"/><contactref element="D1" pad="1"/></signal>
+<signal name="P1-"><contactref element="D1" pad="2"/><contactref element="U2" pad="7"/><contactref element="U1" pad="7"/><contactref element="P1" pad="-"/></signal>
+<signal name="P1+"><contactref element="U2" pad="14"/><contactref element="U1" pad="14"/><contactref element="SW1" pad="6"/><contactref element="SW1" pad="7"/><contactref element="SW1" pad="8"/><contactref element="P1" pad="+"/></signal>
+</signals>
+</board>
+</drawing>
+</eagle>`;
+
+try {
+  const project = Translator.fromEagleBrd(xml);
+  renderer.fitToContent(project);
+  renderer.render(project);
+
+  const compsRendered = renderer.viewportGroup.querySelectorAll('.canvas-component').length;
+  const wiresRendered = renderer.viewportGroup.querySelectorAll('.circuit-wire').length;
+  const transform = renderer.viewportGroup.getAttribute('transform');
+
+  document.getElementById('output').textContent = JSON.stringify({
+    success: true,
+    compsRendered,
+    wiresRendered,
+    transform,
+    zoom: renderer.zoom,
+    panX: renderer.panX,
+    panY: renderer.panY
+  }, null, 2);
+} catch (err) {
+  document.getElementById('output').textContent = 'CATCH: ' + err.message + '\n' + err.stack;
+}
+</script>
+
+
+</body></html>

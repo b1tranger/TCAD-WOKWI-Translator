@@ -71,6 +71,8 @@ export const UI = {
 
         if (action === 'import-tcad') {
           document.getElementById('btn-import-tcad')?.click();
+        } else if (action === 'open-file') {
+          document.getElementById('btn-open-file')?.click();
         } else if (action === 'export-wokwi') {
           document.getElementById('btn-export-wokwi')?.click();
         } else if (action === 'export-html') {

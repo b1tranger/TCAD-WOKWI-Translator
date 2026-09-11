@@ -4,7 +4,96 @@ All notable changes to the **TCAD-WOKWI-Translator** project are documented in t
 
 ---
 
-## [v0.1.0 to v0.1.12] - 2026-09-11
+## [v0.1.0 to v0.1.16] - 2026-09-12
+
+### Universal EAGLE BRD XML Parser, Scalable Multi-MCU Engine & NeoPixel Models (v0.1.16)
+
+- **Universal Autodesk EAGLE `.brd` XML Parsing Pipeline (`Translator.fromEagleBrd`)**:
+  - Tinkercad circuit designs export directly to Autodesk EAGLE `.brd` PCB files containing `<elements>` (exact parts, packages, coordinates) and `<signals>` (complete netlists).
+  - Resolved blank canvas issue by replacing restrictive CSS queries (`querySelectorAll`) on XML DOM with standard `getElementsByTagName('element')` and `getElementsByTagName('signal')` with automatic fallback to `fromEagleBrdRegex(xmlStr)` if DOM parsing returns an empty set.
+  - Added comprehensive component classification (`classifyEagleComponent`) supporting real-world Autodesk EAGLE packages from academic DLD labs: 74HC logic ICs (`74HC00`, `74HC02`, `74HC04`, `74HC08`, `74HC11`, `74HC32`, `74HC86`, `74HC132`), DIP switches (`SPST-478B04ST`, `SPST-678B06ST`), LEDs (`LEDRD254W60D565H860B`, `LIGHTBULB`), generic batteries (`BATTERY-GENERIC`), and passives.
+  - Tested and verified 100% translation success across all 16 authentic DLD Lab assignment circuits (`16/16 passed`).
+- **2D Pin Rotation Matrix in Renderer (`CircuitRenderer.getPinCoordinates`)**:
+  - Added exact 2D rotation transformation matrix $(lx, ly) \mapsto (lx \cos\theta - ly \sin\theta, lx \sin\theta + ly \cos\theta)$ around component local origin $(0, 0)$.
+  - Accurately aligns wire endpoints to rotated chips ($90^\circ, 180^\circ, 270^\circ$), rotated DIP switches, and LEDs.
+  - Extended DIP-14 pin mapping to all `chip-*` series and supported pad numbers 1..8 for DIP switches and pads 1/2 for LEDs.
+- **Standalone `circuit.html` Embedded XML / BRD Ingestion**:
+  - Embedded client-side `parseEagleXml` directly into `circuit.html` (`loadCircuitJson`), allowing users to drop or open `.brd` files in the standalone viewer without requiring `index.html`.
+  - Added DIP IC, DIP switch, and power supply dynamic SVG models to `renderDynamicSvg` in `circuit.html`.
+- **Scalable Arbitrary Multi-MCU System Engine ($N \ge 1$)**:
+  - Completely decoupled the engine from hardcoded design templates, allowing users to import, translate, and simulate circuits containing arbitrary numbers of microcontrollers ($N \ge 1$ Arduino Uno, Mega, Nano, ESP32 boards).
+  - In `Translator.toWokwi`, enhanced multi-MCU netlist compilation to preserve all microcontrollers in the `parts` array without dropping secondary/slave boards or generating circular self-loops.
+  - In `Translator.fromWokwi`, replaced hardcoded fallback defaulting with dynamic catalog matching and `normalizeComponentType`, accurately ingesting custom Wokwi diagrams.
+- **NeoPixel Strip & Ring Component Models (`schema.js`, `renderer.js`)**:
+  - Added `neopixel-strip` (8 RGB LEDs, $140 \times 28$, `wokwi-neopixel-strip`) and `neopixel-ring` (12 RGB LEDs, $76 \times 76$, `wokwi-neopixel-ring`) to the official component catalog.
+  - Implemented realistic SVG renderers: `getNeopixelStripSVG` and `getNeopixelRingSVG` with SMD 5050 RGB LEDs, solder pads, silkscreen labels, and glow filters.
+  - Implemented exact terminal pin coordinate resolvers for `DIN`, `DOUT`, `5V`/`VCC`, and `GND`.
+  - Added smart curved arched wire routing for inter-board communication lines between multiple microcontrollers.
+- **Canvas Auto-Fit (`CircuitRenderer.fitToContent`) & Enhanced File Ingestion**:
+  - Added `fitToContent(project)` method to `CircuitRenderer` which calculates the bounding box across all microcontrollers and peripheral components and dynamically scales/centers the viewport.
+  - Updated file inputs and drag-and-drop handlers across the main app (`index.html`, `js/app.js`) and standalone viewer (`circuit.html`) to accept `.brd` and `.xml` files alongside `.json`.
+  - Added dynamic coordinate offset in `addComponent` to automatically space multiple microcontrollers cleanly on the canvas.
+
+### Standalone HTML Export Fix, Dynamic Viewer Renderer & Direct File Loading (v0.1.15)
+
+- **Canvas Viewport Selector & Blank HTML Export Resolution (`js/app.js`)**:
+  - Identified and fixed critical query selector bug where `btnExportHtml` queried `document.getElementById('circuit-svg')` instead of the canonical `#circuit-canvas` / `this.renderer.viewportGroup`.
+  - Because `#circuit-svg` returned `null`, `renderedSvg` was previously exported as an empty string `""`, creating a standalone viewer with an empty `<g id="viewport-group"></g>`.
+  - Updated extraction pipeline to target `this.renderer?.viewportGroup?.innerHTML || document.querySelector('#circuit-canvas #viewport-group')?.innerHTML` with an automatic safety re-render pass if the DOM innerHTML is empty.
+- **Dynamic Standalone HTML Viewer & Drag-and-Drop Ingestion (`Translator.exportStandaloneHTML`)**:
+  - Embedded full SVG styling into `circuit.html` (`.canvas-component`, `.wire`, `.wire-terminal`, hover glow filters, drop-hint overlay, and responsive zoom controls).
+  - Integrated dual data payloads into the exported standalone HTML: `#tcad-circuit-data` (Native Project schema) and `#wokwi-circuit-data` (canonical Wokwi `diagram.json`).
+  - Embedded dynamic client-side renderer fallback (`renderDynamicSvg`) in `circuit.html`: automatically reconstructs and displays circuit components and bezier wire curves even if static SVG markup is omitted or when a new file is loaded.
+  - Added native "Open File" picker and full canvas drag-and-drop support directly inside `circuit.html` to load and view any `diagram.json` or `circuit.json` locally.
+  - Added dedicated export buttons in `circuit.html` for downloading both canonical Wokwi `diagram.json` and Native `circuit.json`.
+- **Direct Local File Ingestion & Drag-and-Drop in Main Application**:
+  - Added "Open File" button (`#btn-open-file`) to the header toolbar, mobile FAB menu (`#fab-open-file`), and Tinkercad import modal (`#btn-modal-choose-file`).
+  - Added drag-and-drop listener on `#canvas-container` with drag-over visual outlines to instantly parse and render dropped `.json` circuit and diagram files.
+  - Updated `importTinkercadProject` and `Translator.fromWokwi` to preserve diagram titles and file names upon import.
+- **Offline Cache & Release Synchronization**:
+  - Bumped `sw.js` cache version to `v0.1.15` (`const CACHE_VERSION = 'v0.1.15'`).
+  - Updated all version references, asset query strings (`style.css?v=0.1.15`, `app.js?v=0.1.15`), and badges in `index.html` and `README.md`.
+
+### Service Worker CORS Interception Fix, Robust Proxy Fallback & Valentines Contest Ingestion (v0.1.14)
+
+- **Service Worker Cross-Origin Interception & TypeError Fix (`sw.js`)**:
+  - Enforced strict same-origin filtering (`if (!event.request.url.startsWith(self.location.origin)) return;`) in `sw.js` fetch listener so third-party URLs, CDNs, and external proxy APIs are never hijacked by the Service Worker.
+  - Resolved `Uncaught (in promise) TypeError: Failed to convert value to 'Response'` by guaranteeing that fallback cache handlers always resolve with a valid `Response` object instead of `undefined`.
+- **Resilient Offline Slug Parser & Non-Blocking Proxy Fallback (`Translator.fetchAndTranslateTinkercad`)**:
+  - Eliminated dependence on failing third-party proxies (`corsproxy.io` returning 401 Unauthorized and `api.allorigins.win/raw` CORS rejections).
+  - Prioritized the instant, offline client-side slug parser (`Translator.parseTinkercadUrl`), which directly formats human-readable titles from Tinkercad URLs without any network queries.
+  - Implemented silent, non-blocking fallback using `api.allorigins.win/get` JSON endpoint with a 2-second timeout, ensuring external network hiccups never block translation or produce console errors.
+- **Circuit Metadata Title Preservation**:
+  - Fixed title resolution in `Translator.buildTinkercadTranslatedProject` to preserve `urlInfo.title` rather than defaulting to generic `'Tinkercad Circuit'`.
+- **Valentine's Day Contest & Pedestrian Crossing Synthesizers**:
+  - Added dedicated Valentine's Day Contest & Heart Display synthesizer recognizing `valentine|heart|love|contest` tokens with Arduino Uno, half breadboard, 16x2 I2C LCD ("Happy Valentine!"), potentiometer dimmer, pushbutton animation cycle trigger, and symmetric heart LEDs.
+  - Enhanced Traffic Light synthesizer to automatically add pedestrian walk/don't walk LEDs and crosswalk pushbutton whenever `pedestrian|crossing|crosswalk` keywords are detected.
+- **Offline Cache & Release Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.14';`.
+  - Updated asset queries to `?v=0.1.14` and badge in `index.html`.
+
+### Wokwi Wire Connectivity, Breadboard Netlist Collapse & Pin Normalization (v0.1.13)
+
+- **Breadboard Netlist Collapse & Omission for Wokwi Simulation**:
+  - Wokwi's simulator engine simulates active physical components (`wokwi-led`, `wokwi-resistor`, `wokwi-arduino-uno`, etc.) and does not support breadboard carrier parts (`wokwi-breadboard-*`).
+  - Previously, circuits exported breadboard parts and routed wires into `bb_main`, causing Wokwi to drop the part and silently discard all associated wires.
+  - Implemented breadboard netlist collapse in `Translator.toWokwi`: automatically extracts breadboard electrical nets (top/bottom power rails and 5-hole terminal tie columns), groups all components seated on or wired into those tie points, and synthesizes direct component-to-component Wokwi wire pairs (e.g. `arduino_uno:13` $\rightarrow$ `led_red:A`, `led_red:C` $\rightarrow$ `res_red:1`, `arduino_uno:GND.1` $\rightarrow$ `res_red:2`).
+  - Breadboards are cleanly excluded from the Wokwi `parts` array so Wokwi loads cleanly without simulator errors.
+  - Added short-circuit protection in net collapsing (`target.compId !== hub.compId`) to prevent self-loop connections.
+- **Strict Pin Case & Naming Normalization (`normalizeWokwiPin`)**:
+  - Normalized pin names to adhere to Wokwi's case-sensitive simulator requirements:
+    - `wokwi-led`: normalized to uppercase `A` (anode) and `C` (cathode), fixing Wokwi rejecting lowercase `a` / `c`.
+    - `wokwi-resistor`: normalized to `1` and `2`.
+    - `wokwi-pushbutton`: normalized to `1.l`, `1.r`, `2.l`, `2.r`.
+    - `wokwi-potentiometer`: normalized to `GND`, `SIG`, `VCC`.
+    - `wokwi-hc-sr04`: normalized to `VCC`, `TRIG`, `ECHO`, `GND`.
+    - `wokwi-servo`: normalized to `GND`, `V+`, `PWM`.
+    - `wokwi-buzzer`: normalized to `1`, `2`.
+    - `wokwi-photoresistor-sensor`: normalized to `VCC`, `GND`, `DO`, `AO`.
+    - Arduino Uno/Nano/Mega: normalized `GND` to `GND.1`, numeric digital pins `0`..`13`, analog pins `A0`..`A5`, `5V`, `VIN`.
+- **Offline Cache & Release Bump**:
+  - Bumped `sw.js` line 5 to `const CACHE_VERSION = 'v0.1.13';`.
+  - Updated asset queries to `?v=0.1.13` and badge in `index.html`.
 
 ### Universal Tinkercad Circuit Ingestion, Spatial Layout & Breadboard Snapping (v0.1.12)
 

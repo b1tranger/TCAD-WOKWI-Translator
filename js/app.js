@@ -20,6 +20,7 @@ class App {
     this.initInspector();
     this.initToolbar();
     this.initTinkercadImportHandler();
+    this.initFileLoadingHandler();
     UI.init((type) => this.addComponent(type));
     this.updateInspector();
     this.updateCircuitBanner();
@@ -79,16 +80,54 @@ class App {
       });
     }
 
-    // Drag-and-drop onto canvas
+    // Drag-and-drop onto canvas (Palette components or JSON files)
     const canvasContainer = document.getElementById('canvas-container');
     if (canvasContainer) {
+      canvasContainer.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.types && (e.dataTransfer.types.includes('Files') || Array.from(e.dataTransfer.types).includes('Files'))) {
+          canvasContainer.classList.add('drag-over');
+        }
+      });
+
       canvasContainer.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
+        if (e.dataTransfer.types && (e.dataTransfer.types.includes('Files') || Array.from(e.dataTransfer.types).includes('Files'))) {
+          canvasContainer.classList.add('drag-over');
+        }
+      });
+
+      canvasContainer.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget && canvasContainer.contains(e.relatedTarget)) return;
+        canvasContainer.classList.remove('drag-over');
       });
 
       canvasContainer.addEventListener('drop', (e) => {
         e.preventDefault();
+        canvasContainer.classList.remove('drag-over');
+
+        // Check if user dropped a local JSON / EAGLE circuit file
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          const ext = file.name.toLowerCase().split('.').pop();
+          if (!['json', 'brd', 'xml'].includes(ext)) {
+            UI.showToast('Please drop a valid .json, .brd, or .xml circuit file', 'error');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const content = evt.target.result;
+            this.importTinkercadProject('', content, file.name);
+          };
+          reader.onerror = () => {
+            UI.showToast('Failed to read dropped file', 'error');
+          };
+          reader.readAsText(file);
+          return;
+        }
+
+        // Otherwise handle sidebar palette component drop
         const type = e.dataTransfer.getData('text/plain');
         if (type && COMPONENT_CATALOG[type]) {
           const rect = canvasContainer.getBoundingClientRect();
@@ -114,9 +153,15 @@ class App {
     let posY = y;
 
     if (typeof posX !== 'number' || typeof posY !== 'number') {
-      const idx = (this.project.components || []).length;
-      posX = 120 + (idx * 25) % 240;
-      posY = 100 + (idx * 30) % 200;
+      if (type.startsWith('arduino') || type.startsWith('esp32')) {
+        const mcuCount = (this.project.components || []).filter(c => c.type.startsWith('arduino') || c.type.startsWith('esp32')).length;
+        posX = 80 + (mcuCount % 3) * 360;
+        posY = 120 + Math.floor(mcuCount / 3) * 280;
+      } else {
+        const idx = (this.project.components || []).length;
+        posX = 120 + (idx * 25) % 240;
+        posY = 100 + (idx * 30) % 200;
+      }
     }
 
     const newComp = {
@@ -236,9 +281,13 @@ class App {
     const btnExportHtml = document.getElementById('btn-export-html');
     if (btnExportHtml) {
       btnExportHtml.addEventListener('click', () => {
-        const svgEl = document.getElementById('circuit-svg');
-        const viewportGroup = svgEl ? svgEl.querySelector('#viewport-group') : null;
-        const renderedSvg = viewportGroup ? viewportGroup.innerHTML : '';
+        let viewportGroup = this.renderer?.viewportGroup || document.querySelector('#circuit-canvas #viewport-group') || document.getElementById('viewport-group');
+        let renderedSvg = viewportGroup ? viewportGroup.innerHTML : '';
+        if (!renderedSvg.trim() && this.renderer && this.project) {
+          this.renderer.render(this.project);
+          viewportGroup = this.renderer?.viewportGroup || document.getElementById('viewport-group');
+          renderedSvg = viewportGroup ? viewportGroup.innerHTML : '';
+        }
         const html = Translator.exportStandaloneHTML(this.project, renderedSvg);
         this.downloadFile('circuit.html', html, 'text/html');
         UI.showToast('Exported Standalone circuit.html with full graphics!', 'success');
@@ -255,7 +304,7 @@ class App {
     }
   }
 
-  async importTinkercadProject(urlVal, jsonVal) {
+  async importTinkercadProject(urlVal, jsonVal, optionalTitle = '') {
     const statusEl = document.getElementById('tcad-import-status');
     const modalTcad = document.getElementById('modal-import-tcad');
     const quickInput = document.getElementById('quick-tcad-url-input');
@@ -270,22 +319,35 @@ class App {
       return;
     }
 
-    UI.showToast('Translating Tinkercad circuit...', 'info', 2000);
+    UI.showToast('Translating circuit data...', 'info', 2000);
     if (statusEl) {
       statusEl.className = 'import-status';
-      statusEl.textContent = 'Translating Tinkercad circuit data...';
+      statusEl.textContent = 'Translating circuit data...';
     }
 
     try {
-      const translated = await Translator.fetchAndTranslateTinkercad(urlVal, jsonVal);
+      let translated;
+      const trimmed = (jsonVal || '').trim();
+      if (trimmed.startsWith('<?xml') || trimmed.startsWith('<eagle') || trimmed.includes('<board>') || trimmed.includes('<signals>')) {
+        translated = Translator.fromEagleBrd(trimmed);
+      } else {
+        translated = await Translator.fetchAndTranslateTinkercad(urlVal, jsonVal);
+      }
+
+      if (optionalTitle && (!translated.metadata.title || translated.metadata.title.startsWith('Imported '))) {
+        const cleanTitle = optionalTitle.replace(/\.(json|brd|xml)$/i, '').replace(/[-_]/g, ' ');
+        translated.metadata.title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+      }
+
       this.project = translated;
 
       // Sync input fields
       if (quickInput && urlVal) quickInput.value = urlVal;
       if (modalInput && urlVal) modalInput.value = urlVal;
 
-      // Re-render canvas
+      // Re-render canvas and auto-fit to content (supporting scalable multi-MCU designs)
       if (this.renderer) {
+        this.renderer.fitToContent(this.project);
         this.renderer.render(this.project);
       }
 
@@ -311,6 +373,48 @@ class App {
     }
   }
 
+  initFileLoadingHandler() {
+    const fileInput = document.getElementById('file-input-circuit');
+    const btnOpenFile = document.getElementById('btn-open-file');
+    const btnModalChooseFile = document.getElementById('btn-modal-choose-file');
+    const fabOpenFile = document.getElementById('fab-open-file');
+
+    const triggerFilePicker = () => {
+      if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+      }
+    };
+
+    if (btnOpenFile) btnOpenFile.addEventListener('click', triggerFilePicker);
+    if (btnModalChooseFile) btnModalChooseFile.addEventListener('click', triggerFilePicker);
+    if (fabOpenFile) fabOpenFile.addEventListener('click', triggerFilePicker);
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const labelEl = document.getElementById('modal-chosen-file-label');
+        if (labelEl) labelEl.textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const content = evt.target.result;
+          const modalJsonInput = document.getElementById('tcad-json-input');
+          if (modalJsonInput) {
+            modalJsonInput.value = content;
+          }
+          this.importTinkercadProject('', content, file.name);
+        };
+        reader.onerror = () => {
+          UI.showToast(`Failed to read file ${file.name}`, 'error');
+        };
+        reader.readAsText(file);
+      });
+    }
+  }
+
   initTinkercadImportHandler() {
     const sampleUrl = 'https://www.tinkercad.com/things/7L66saKKSJ4-dld-lab-assignment?sharecode=uN3hDiqfdmBo2YvKn9dDltuocGkzMfPV7UJnA_uWMdk';
 
@@ -322,7 +426,7 @@ class App {
     if (btnQuickSample && quickInput) {
       btnQuickSample.addEventListener('click', () => {
         quickInput.value = sampleUrl;
-        UI.showToast('Sample Tinkercad URL loaded', 'info');
+        UI.showToast('Loaded sample Tinkercad assignment link', 'info', 2000);
       });
     }
 
